@@ -37,7 +37,11 @@ public class main {
 			}
 			if (args[i].contains("--help")) {
 				System.out.println("Usage: java -cp . verkehrschaosTruckCompany [OPTIONS...]");
-				System.out.println("");
+				System.out.println("Arguments:");
+				System.out.println("--name=arg      Set the company name");
+				System.out.println("--location=arg  Set the location of the company");
+				System.out.println("                Valid locations: nord, ost, sued, west");
+				System.out.println("--help          Print this help message");
 				System.exit(-1);
 			}
 		}
@@ -63,13 +67,13 @@ public class main {
 			company.setName(company_name);
 			// Get reference to our servant
 			org.omg.CORBA.Object ref = rootPoa.servant_to_reference(company);
-		    TruckCompany href = TruckCompanyHelper.narrow(ref);
+		    final TruckCompany href = TruckCompanyHelper.narrow(ref);
 		    company.setObj(href);
 		    // Get name service 
 		    final NamingContextExt nc = NamingContextExtHelper.narrow(
 		    		orb.resolve_initial_references("NameService"));
 		    // bind our object ref to a name
-		    NameComponent path[] = nc.to_name(company_name);
+		    final NameComponent path[] = nc.to_name(company_name);
 		    nc.rebind(path, href);
 		    // Register for location and start our duty...
 		    // This call is blocking until program has to exit

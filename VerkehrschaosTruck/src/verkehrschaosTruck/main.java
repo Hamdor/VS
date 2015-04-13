@@ -37,7 +37,10 @@ public class main {
 			}
 			if (args[i].contains("--help")) {
 				System.out.println("Usage: java -cp . verkehrschaosTruck [OPTIONS...]");
-				System.out.println("");
+				System.out.println("Arguments:");
+				System.out.println("--name=arg      Set the truck name");
+				System.out.println("--company=arg   Set the truck company");
+				System.out.println("--help          Print this help message");
 				System.exit(-1);
 			}
 		}
@@ -58,16 +61,16 @@ public class main {
 			rootPoa.the_POAManager().activate();
 			// Init our object
 			final TruckImpl truck = new TruckImpl();
-			truck.setName(company_name);
+			truck.setName(truck_name);
 			// Get reference to our servant
 			org.omg.CORBA.Object ref = rootPoa.servant_to_reference(truck);
-		    Truck href = TruckHelper.narrow(ref);
+		    final Truck href = TruckHelper.narrow(ref);
 		    truck.setTruck(href);
 		    // Get name service 
 		    final NamingContextExt nc = NamingContextExtHelper.narrow(
 		    		orb.resolve_initial_references("NameService"));
 		    // bind our object ref to a name
-		    NameComponent path[] = nc.to_name(company_name);
+		    final NameComponent path[] = nc.to_name(truck_name);
 		    nc.rebind(path, href);
 		    // Register for location and start our duty...
 		    // This call is blocking until program has to exit

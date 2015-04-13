@@ -3,9 +3,14 @@ package verkehrschaosTruck;
 import java.util.concurrent.Semaphore;
 
 import org.omg.CosNaming.NamingContextExt;
+import org.omg.CosNaming.NamingContextPackage.CannotProceed;
+import org.omg.CosNaming.NamingContextPackage.InvalidName;
+import org.omg.CosNaming.NamingContextPackage.NotFound;
 
+import verkehrschaos.StreetsHelper;
 import verkehrschaos.Truck;
 import verkehrschaos.TruckCompany;
+import verkehrschaos.TruckCompanyHelper;
 
 public class TruckImpl extends verkehrschaos.TruckPOA {
 	private String m_name;
@@ -13,13 +18,19 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 	private Truck m_this;
 	private Semaphore m_running;
 	
-	public void run(final NamingContextExt namecontext, final String company_name) {
-		// TODO:
-		// get company, register at company
-		// block till end => unregister from company...
+	public void run(final NamingContextExt ncontext, final String company_name) {
 		try {
+			org.omg.CORBA.Object obj = ncontext.resolve_str(company_name);
+			TruckCompany company = TruckCompanyHelper.narrow(obj);
+			company.addTruck(m_this);
 			m_running.acquire();
 		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (NotFound e) {
+			e.printStackTrace();
+		} catch (CannotProceed e) {
+			e.printStackTrace();
+		} catch (InvalidName e) {
 			e.printStackTrace();
 		}
 	}

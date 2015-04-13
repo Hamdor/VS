@@ -20,13 +20,13 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 
     private String           m_name;
     private ArrayList<Truck> m_trucks;
-    private ArrayList<Truck> m_adviseable;
+    private ArrayList<Truck> m_arriving;
     private Semaphore        m_running;
     private TruckCompany     m_obj;
     
     public TruckCompanyImpl() {
     	m_trucks = new ArrayList<Truck>();
-    	m_adviseable = new ArrayList<Truck>();
+    	m_arriving = new ArrayList<Truck>();
     	m_running = new Semaphore(0);
     }
     
@@ -72,8 +72,8 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 	@Override
 	public void removeTruck(Truck truck) {
 		m_trucks.remove(truck);
-		if (m_adviseable.contains(truck)) {
-			m_adviseable.remove(truck);
+		if (m_arriving.contains(truck)) {
+			m_arriving.remove(truck);
 		}
 	}
 
@@ -94,20 +94,20 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 	@Override
 	public void advise(Truck truck) {
 		m_trucks.add(truck);
-		m_adviseable.add(truck);
+		m_arriving.add(truck);
 	}
 
 	@Override
 	public void arrive(Truck truck) {
-		m_adviseable.remove(truck);
+		m_arriving.remove(truck);
 	}
 
 	@Override
 	public void putOutOfService() {
-		for (Truck t : m_adviseable) {
+		for (Truck t : m_arriving) {
 			t.putOutOfService();
 		}
-		m_adviseable.clear();
+		m_arriving.clear();
 		m_trucks.clear();
 		m_running.release();
 	}
