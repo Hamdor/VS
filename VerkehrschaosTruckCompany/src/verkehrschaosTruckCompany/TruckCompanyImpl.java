@@ -24,7 +24,8 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
     private Semaphore        m_running;
     private TruckCompany     m_obj;
     
-    public TruckCompanyImpl() {
+    public TruckCompanyImpl(final String name) {
+    	m_name = name;
     	m_trucks = new ArrayList<Truck>();
     	m_arriving = new ArrayList<Truck>();
     	m_running = new Semaphore(0);
@@ -53,10 +54,6 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 				}
 			}
 		}
-    }
-    
-    public void setName(final String name) {
-    	m_name = name;
     }
 	
 	@Override

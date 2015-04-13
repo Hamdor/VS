@@ -20,6 +20,13 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 	
 	private final boolean m_print_coords = true;
 	
+	TruckImpl(final String name) {
+		m_name = name;
+		m_company = null;
+		m_this = null;
+		m_running = new Semaphore(0);
+	}
+
 	public void run(final NamingContextExt ncontext, final String company_name) {
 		try {
 			org.omg.CORBA.Object obj = ncontext.resolve_str(company_name);
@@ -39,10 +46,6 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 	
 	public void setTruck(final Truck truck) {
 		m_this = truck;
-	}
-	
-	public void setName(final String name) {
-		m_name = name;
 	}
 	
 	@Override

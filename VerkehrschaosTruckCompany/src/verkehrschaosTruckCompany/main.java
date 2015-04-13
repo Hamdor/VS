@@ -63,8 +63,7 @@ public class main {
 			final POA rootPoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
 			rootPoa.the_POAManager().activate();
 			// Init our object
-			final TruckCompanyImpl company = new TruckCompanyImpl();
-			company.setName(company_name);
+			final TruckCompanyImpl company = new TruckCompanyImpl(company_name);
 			// Get reference to our servant
 			org.omg.CORBA.Object ref = rootPoa.servant_to_reference(company);
 		    final TruckCompany href = TruckCompanyHelper.narrow(ref);
