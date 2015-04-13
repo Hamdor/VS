@@ -7,7 +7,6 @@ import org.omg.CosNaming.NamingContextPackage.CannotProceed;
 import org.omg.CosNaming.NamingContextPackage.InvalidName;
 import org.omg.CosNaming.NamingContextPackage.NotFound;
 
-import verkehrschaos.StreetsHelper;
 import verkehrschaos.Truck;
 import verkehrschaos.TruckCompany;
 import verkehrschaos.TruckCompanyHelper;
