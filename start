@@ -3,10 +3,12 @@
 nsport=20000
 nsname=localhost
 
-orbd -ORBInitialPort $nsport &
-java -jar Verkehrschaos.jar name=Streets nameserverport=$nsport nameserverhost=$nsname &
-java -jar VerkehrschaosControl.jar name=Streets nameserverport=$nsport nameserverhost=$nsname &
+orbd -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
 
-# TODO:
-# - Speditionen starten (alle 4 mit verschiedenen args)
-# - Trucks starten
+java -jar Verkehrschaos.jar name=Streets nameserverport=$nsport nameserverhost=$nsname -ORBInitialHost $nsname &> /dev/null &
+
+sleep 1
+java -jar VerkehrschaosControl.jar name=Streets nameserverport=$nsport nameserverhost=$nsname -ORBInitialHost $nsname
+
+killall java & killall orbd
