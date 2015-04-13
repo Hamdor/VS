@@ -18,6 +18,8 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 	private Truck m_this;
 	private Semaphore m_running;
 	
+	private final boolean m_print_coords = true;
+	
 	public void run(final NamingContextExt ncontext, final String company_name) {
 		try {
 			org.omg.CORBA.Object obj = ncontext.resolve_str(company_name);
@@ -60,7 +62,9 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 
 	@Override
 	public void setCoordinate(double x, double y) {
-		System.out.println("[Coords X: " + x + " Y: " + y + "]");
+		if (m_print_coords) {
+			System.out.println("[Coords X: " + x + " Y: " + y + "]");
+		}
 	}
 
 	@Override
