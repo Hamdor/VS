@@ -1,0 +1,10 @@
+*.class
+*.jar
+.metadata
+.recommenders
+VerkehrschaosTruck/.classpath
+VerkehrschaosTruck/.project
+VerkehrschaosTruck/.settings/
+VerkehrschaosTruckCompany/.classpath
+VerkehrschaosTruckCompany/.project
+VerkehrschaosTruckCompany/.settings/

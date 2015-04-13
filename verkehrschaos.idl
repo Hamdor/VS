@@ -1,0 +1,129 @@
+/////////////////////////////////////
+// idl fuer Projekt Verkehrschaos
+// Version 1.00 vom 25.3.15
+// Autor: H. H. Heitmann
+/////////////////////////////////////
+
+module verkehrschaos {
+
+interface TruckCompany;
+
+exception ELocationNotFound{string msg;};
+exception ELocationInUse{string msg;};
+exception ELocationNotInUse{string msg;};
+exception ETruckCompanyUnknown{string msg;};
+exception ETruckUnknown{string msg;};
+
+interface Truck{
+    /* Gibt den Namen des LKWs. */
+    string getName();
+    
+    /* Gibt die zugeordnete Spedition */
+    TruckCompany getCompany();
+    
+    /* Neue Zuordnung einer Spedition.
+     * Wird von der zustaendigen Spedition aufgerufen. 
+     * Zu Debug-Zwecken soll der Name der neuen Spedition auf der Konsole ausgegeben werden. 
+     */
+    void setCompany(in TruckCompany company);
+
+    /* Informiert den LKW waehrend einer Fahrt ueber die aktuelle Position.
+     * Position kann auf der Konsole ausgegeben werden.
+     * Wird von Streets aufgerufen.
+     */
+    void setCoordinate(in double x, in double y);
+    
+    /*
+     * Stilllegung des LKWs (LKW Anwendung wird beendet).
+     * Wird z. B. von zugeordneter Spedition aufgerufen, wenn diese still gelegt wird
+     * oder von der Steueranwendung (Client).
+     * Beenden der Anwendung durch Aufruf von orb.shutdown(true).
+     * Nach orb.shutdown kleine Pause einlegen (0.5 sec) um Exception zu vermeiden.
+     */
+    void putOutOfService();
+};
+
+typedef sequence<Truck> TTruckList;
+
+interface TruckCompany{
+    /* Gibt den Namen der Spedition. */
+    string getName();
+
+    /* Fuegt der Spedition einen LKW hinzu.
+     * Damit ist die Spedition die dem LKW zugeordnete Spedition:
+     */
+    void addTruck( in Truck truck );
+
+
+    /* Entfernt den LKW von der Spedition
+     */
+    void removeTruck( in Truck truck );
+
+    /* Liefert eine Liste aller verfuegbaren LKWs.
+     * LKWs, die unterwegs sind, sollen auch in der Liste enthalten sein.
+     * Rueckgabewert soll die Anzahl der LKWs enthalten.
+     */
+    long getTrucks(out TTruckList trucks);
+
+    /* LKW hat Spedition verlassen.
+     * Spedition ist nicht mehr fuer den Laster zustaendig, muss aus Liste der Laster entfernt werden.
+     * Wird von Streets aufgerufen */
+    void leave( in Truck truck );
+
+    /* LKW wird angekuendigt.
+     * Eine andere Spedition hat einen Laster auf den Weg zu dieser Spedition gebracht.
+     * Spedition soll den LKW sofort durch Aufruf von Truck.setCompany uebernehmen.
+     * Wird von Streets aufgerufen */
+    void advise( in Truck truck );
+
+    /* LKW ist im Ziel angekommen.
+     * Steht nun fuer neue Fahrten zur Verfuegung.
+     * Wird von Streets aufgerufen */
+    void arrive( in Truck truck );
+
+    /*
+     * Stilllegung der Spedition (TruckCompany Anwendung wird beendet).
+     * Wird von der Steueranwendung (Client) aufgerufen.
+     * Legt auch alle zugeordneten LKWs still.
+     * Beenden der Anwendung durch Aufruf von orb.shutdown(true).
+     * Nach orb.shutdown kleine Pause einlegen (0.5 sec) um Exception zu vermeiden.
+     */
+    void putOutOfService();
+};
+
+typedef sequence<string> TLocationList;
+
+interface Streets {
+    /* Spedition siedelt sich am angegebenen Ort an. */
+    void claim( in TruckCompany company, in string location )raises(ELocationNotFound,ELocationInUse);
+
+    /* Spedition am angegebenen Ort wird aufgegeben. Ort steht nun fuer andere Spedition zur Verfuegung. */
+    void free( in string location )raises(ELocationNotFound);
+
+    /* Gibt die Namen aller Orte, an denen sich eine Spedition ansiedeln kann  */
+    TLocationList getLocations();
+
+    /* Durchsucht die Liste der angesiedelten Speditionen. */
+    TruckCompany getTruckCompanyByName(in string companyname) raises (ETruckCompanyUnknown);
+
+    /* Gibt die Spedition, die sich an einem Ort angesiedelt hat. */
+    TruckCompany getTruckCompanyByLocation(in string location)raises (ELocationNotInUse, ELocationNotFound);
+
+    /* Startet einen LKW.
+     * Startort ergibt sich aus der Spedition, die dem LKW zugeordnet ist.
+     * Zielspedition wird explizit angegeben.
+     * Aufruf bewirkt, dass der LKW der  Zielspedition angekuendigt wird (advice).
+     * Damit ist die Zielspedition die dem LKW zugeordnete Spedition:
+     * Zielspedition ruft setCompany vom LKW auf.
+     * Zielspedition darf aber erst dann ueber den LKW verfuegen, wenn dieser dort angekommen ist (arrive).
+     * LKW setzt sich sofort in Bewegung. Er bekommt seine aktuelle Position staendig mitgeteilt (setCoordinate).
+     */
+    void start( in Truck truck, in TruckCompany to)raises (ETruckCompanyUnknown);
+
+    /* Entfernt einen LKW, der gerade unterwegs ist.
+     * Der LKW verschwindet unmittelbar von der Karte.
+     * Er darf keiner Spedition mehr zugeordnet sein.
+     */
+    void remove(in Truck truck);
+  };
+};

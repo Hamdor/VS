@@ -1,0 +1,114 @@
+package verkehrschaosTruckCompany;
+
+import java.util.ArrayList;
+import java.util.concurrent.Semaphore;
+
+import org.omg.CosNaming.NamingContextExt;
+import org.omg.CosNaming.NamingContextPackage.CannotProceed;
+import org.omg.CosNaming.NamingContextPackage.InvalidName;
+import org.omg.CosNaming.NamingContextPackage.NotFound;
+
+import verkehrschaos.ELocationInUse;
+import verkehrschaos.ELocationNotFound;
+import verkehrschaos.Streets;
+import verkehrschaos.StreetsHelper;
+import verkehrschaos.TTruckListHolder;
+import verkehrschaos.Truck;
+import verkehrschaos.TruckCompany;
+
+public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
+
+    private String           m_name;
+    private ArrayList<Truck> m_trucks;
+    private ArrayList<Truck> m_adviseable;
+    private Semaphore        m_running;
+    private TruckCompany     m_obj;
+    
+    public TruckCompanyImpl() {
+    	m_trucks = new ArrayList<Truck>();
+    	m_adviseable = new ArrayList<Truck>();
+    	m_running = new Semaphore(0);
+    }
+    
+    public void setObj(final TruckCompany obj) {
+    	m_obj = obj;
+    }
+    
+    public void run(final NamingContextExt ncontext, final String pos) {
+    	// Register for location
+    	Streets streets = null;
+    	try {
+    		org.omg.CORBA.Object obj = ncontext.resolve_str("Streets");
+    		streets = StreetsHelper.narrow(obj);
+    		streets.claim(m_obj, pos);
+			m_running.acquire();
+		} catch (InterruptedException | ELocationNotFound | ELocationInUse | NotFound | CannotProceed | InvalidName e) {
+			e.printStackTrace();
+		} finally {
+			if (streets != null) {
+				try {
+					streets.free(pos);
+				} catch (ELocationNotFound e) {
+					e.printStackTrace();
+				}
+			}
+		}
+    }
+    
+    public void setName(final String name) {
+    	m_name = name;
+    }
+	
+	@Override
+	public String getName() {
+		return m_name;
+	}
+
+	@Override
+	public void addTruck(Truck truck) {
+		m_trucks.add(truck);
+	}
+
+	@Override
+	public void removeTruck(Truck truck) {
+		m_trucks.remove(truck);
+		if (m_adviseable.contains(truck)) {
+			m_adviseable.remove(truck);
+		}
+	}
+
+	@Override
+	public int getTrucks(TTruckListHolder trucks) {
+		trucks.value = new Truck[m_trucks.size()];
+		if (!m_trucks.isEmpty()) {
+			m_trucks.toArray(trucks.value);
+		}
+	    return m_trucks == null ? 0 : m_trucks.size();
+	}
+
+	@Override
+	public void leave(Truck truck) {
+		m_trucks.remove(truck);
+	}
+
+	@Override
+	public void advise(Truck truck) {
+		m_trucks.add(truck);
+		m_adviseable.add(truck);
+	}
+
+	@Override
+	public void arrive(Truck truck) {
+		m_adviseable.remove(truck);
+	}
+
+	@Override
+	public void putOutOfService() {
+		for (Truck t : m_adviseable) {
+			t.putOutOfService();
+		}
+		m_adviseable.clear();
+		m_trucks.clear();
+		m_running.release();
+	}
+}
