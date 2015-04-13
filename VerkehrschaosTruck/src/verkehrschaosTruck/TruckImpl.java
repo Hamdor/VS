@@ -66,7 +66,7 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 	@Override
 	public void setCoordinate(double x, double y) {
 		if (m_print_coords) {
-			System.out.println("[Coords X: " + x + " Y: " + y + "]");
+			System.out.println("[" + m_name + ": Coords X: " + x + " Y: " + y + "]");
 		}
 	}
 
