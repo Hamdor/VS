@@ -51,8 +51,9 @@ public class companyStarter {
 			System.out.println("No company name given! Set copmany name with `--name=...`");
 			System.exit(-2);
 		}
-		if (company_pos != "nord" || company_pos != "sued" || company_pos != "west"
-			|| company_pos != "ost") {
+		System.out.println(company_pos);
+		if (!company_pos.equals("nord") && !company_pos.equals("sued")
+				&& !company_pos.equals("west") && !company_pos.equals("ost")) {
 			System.out.println("No valid location specified! Set location with `--location=...`");
 			System.out.println("Valid locations are: nord, sued, west, ost");
 			System.exit(-3);
