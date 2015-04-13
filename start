@@ -7,24 +7,36 @@ orbd -ORBInitialHost $nsname -ORBInitialPort $nsport &
 sleep 1
 
 java -jar Verkehrschaos.jar name=Streets nameserverport=$nsport nameserverhost=$nsname -ORBInitialHost $nsname &> /dev/null &
+sleep 1
 
 # start companys
 cd VerkehrschaosTruckCompany/bin/
-java verkehrschaosTruckCompany.companyStarter --name=Aldi --location=nord &
-java verkehrschaosTruckCompany.companyStarter --name=Lidl --location=ost &
-java verkehrschaosTruckCompany.companyStarter --name=Rewe --location=sued &
-java verkehrschaosTruckCompany.companyStarter --name=Penny --location=west &
+java verkehrschaosTruckCompany.companyStarter --name=Aldi --location=nord -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
+java verkehrschaosTruckCompany.companyStarter --name=Lidl --location=ost -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
+java verkehrschaosTruckCompany.companyStarter --name=Rewe --location=sued -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
+java verkehrschaosTruckCompany.companyStarter --name=Penny --location=west -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
 
 # start trucks
 cd ../../VerkehrschaosTruck/bin/
-java verkehrschaosTruck.truckStarter --name=Marian --company=Aldi &
-java verkehrschaosTruck.truckStarter --name=Apple-Boy --company=Aldi &
-java verkehrschaosTruck.truckStarter --name=Sheldon --company=Lidl &
-java verkehrschaosTruck.truckStarter --name=Bane --company=Lidl &
-java verkehrschaosTruck.truckStarter --name=Hans --company=Rewe &
-java verkehrschaosTruck.truckStarter --name=GNU-Dad --company=Rewe &
-java verkehrschaosTruck.truckStarter --name=Batman --company=Penny &
-java verkehrschaosTruck.truckStarter --name=Machete --company=Penny &
+java verkehrschaosTruck.truckStarter --name=Marian --company=Aldi -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
+java verkehrschaosTruck.truckStarter --name=Apple-Boy --company=Aldi -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
+java verkehrschaosTruck.truckStarter --name=Sheldon --company=Lidl -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
+java verkehrschaosTruck.truckStarter --name=Bane --company=Lidl -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
+java verkehrschaosTruck.truckStarter --name=Hans --company=Rewe -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
+java verkehrschaosTruck.truckStarter --name=GNU-Dad --company=Rewe -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
+java verkehrschaosTruck.truckStarter --name=Batman --company=Penny -ORBInitialHost $nsname -ORBInitialPort $nsport &
+sleep 1
+java verkehrschaosTruck.truckStarter --name=Machete --company=Penny -ORBInitialHost $nsname -ORBInitialPort $nsport &
 
 cd ../../
 
@@ -32,3 +44,4 @@ sleep 1
 java -jar VerkehrschaosControl.jar name=Streets nameserverport=$nsport nameserverhost=$nsname -ORBInitialHost $nsname
 
 killall java & killall orbd
+rm -rf orb.db
