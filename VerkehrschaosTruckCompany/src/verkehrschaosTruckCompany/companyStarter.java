@@ -20,9 +20,7 @@ import verkehrschaos.TruckCompanyHelper;
 
 public class companyStarter {
 	public static void main(String[] args) {
-		Properties props = new Properties();
-		props.put("org.omg.CORBA.ORBInitialPort", "20000");
-		props.put("org.omg.CORBA.ORBInitialHost", "localhost");
+		Properties props = null;
 		// Get input for company name and comapany location
 		String company_name = "";
 		String company_pos  = "";
@@ -35,13 +33,19 @@ public class companyStarter {
 				String[] splitted = args[i].split("=");
 				company_pos = splitted.length == 2 ? splitted[1] : "";
 			}
+			if (args[i].contains("--build-in-props")) {
+				props = new Properties();
+				props.put("org.omg.CORBA.ORBInitialPort", "20000");
+				props.put("org.omg.CORBA.ORBInitialHost", "localhost");
+			}
 			if (args[i].contains("--help")) {
 				System.out.println("Usage: java -cp . verkehrschaosTruckCompany [OPTIONS...]");
 				System.out.println("Arguments:");
-				System.out.println("--name=arg      Set the company name");
-				System.out.println("--location=arg  Set the location of the company");
-				System.out.println("                Valid locations: nord, ost, sued, west");
-				System.out.println("--help          Print this help message");
+				System.out.println("--name=arg       Set the company name");
+				System.out.println("--location=arg   Set the location of the company");
+				System.out.println("                 Valid locations: nord, ost, sued, west");
+				System.out.println("--build-in-props Use build in properties as ORB Arguments");
+				System.out.println("--help           Print this help message");
 				System.out.println("ORB Arguments are passed to CORBA Framework");
 				System.exit(-1);
 			}
