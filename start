@@ -9,11 +9,11 @@ sleep 1
 java -jar Verkehrschaos.jar name=Streets nameserverport=$nsport nameserverhost=$nsname -ORBInitialHost $nsname &> /dev/null &
 
 # start companys
-cd VerkehrschaosCompany/bin/
-java VerkehrschaosCompany.companyStarter --name=Aldi --location=nord &
-java VerkehrschaosCompany.companyStarter --name=Lidl --location=ost &
-java VerkehrschaosCompany.companyStarter --name=Rewe --location=sued &
-java VerkehrschaosCompany.companyStarter --name=Penny --location=west &
+cd VerkehrschaosTruckCompany/bin/
+java verkehrschaosTruckCompany.companyStarter --name=Aldi --location=nord &
+java verkehrschaosTruckCompany.companyStarter --name=Lidl --location=ost &
+java verkehrschaosTruckCompany.companyStarter --name=Rewe --location=sued &
+java verkehrschaosTruckCompany.companyStarter --name=Penny --location=west &
 
 # start trucks
 cd ../../VerkehrschaosTruck/bin/
@@ -25,6 +25,8 @@ java verkehrschaosTruck.truckStarter --name=Hans --company=Rewe &
 java verkehrschaosTruck.truckStarter --name=GNU-Dad --company=Rewe &
 java verkehrschaosTruck.truckStarter --name=Batman --company=Penny &
 java verkehrschaosTruck.truckStarter --name=Machete --company=Penny &
+
+cd ../../
 
 sleep 1
 java -jar VerkehrschaosControl.jar name=Streets nameserverport=$nsport nameserverhost=$nsname -ORBInitialHost $nsname

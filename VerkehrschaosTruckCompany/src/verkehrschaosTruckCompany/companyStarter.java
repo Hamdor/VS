@@ -33,7 +33,7 @@ public class companyStarter {
 			}
 			if (args[i].contains("--location=")) {
 				String[] splitted = args[i].split("=");
-				company_name = splitted.length == 2 ? splitted[1] : "";
+				company_pos = splitted.length == 2 ? splitted[1] : "";
 			}
 			if (args[i].contains("--help")) {
 				System.out.println("Usage: java -cp . verkehrschaosTruckCompany [OPTIONS...]");
