@@ -14,7 +14,7 @@ import verkehrschaos.TruckCompanyHelper;
 public class TruckImpl extends verkehrschaos.TruckPOA {
 	private String m_name;
 	private TruckCompany m_company;
-	private Truck m_this;
+	private Truck m_obj;
 	private Semaphore m_running;
 	
 	private final boolean m_print_coords = true;
@@ -22,7 +22,7 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 	TruckImpl(final String name) {
 		m_name = name;
 		m_company = null;
-		m_this = null;
+		m_obj = null;
 		m_running = new Semaphore(0);
 	}
 
@@ -30,7 +30,7 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 		try {
 			org.omg.CORBA.Object obj = ncontext.resolve_str(company_name);
 			TruckCompany company = TruckCompanyHelper.narrow(obj);
-			company.addTruck(m_this);
+			setCompany(company);
 			m_running.acquire();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -44,7 +44,7 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 	}
 	
 	public void setTruck(final Truck truck) {
-		m_this = truck;
+		m_obj = truck;
 	}
 	
 	@Override
@@ -60,6 +60,7 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 	@Override
 	public void setCompany(TruckCompany company) {
 		m_company = company;
+		company.addTruck(m_obj);
 	}
 
 	@Override
@@ -71,7 +72,7 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 
 	@Override
 	public void putOutOfService() {
-		m_company.removeTruck(m_this);
+		m_company.removeTruck(m_obj);
 		m_running.release();
 	}
 }

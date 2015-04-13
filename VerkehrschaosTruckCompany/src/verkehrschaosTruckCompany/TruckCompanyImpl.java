@@ -90,7 +90,7 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 
 	@Override
 	public void advise(Truck truck) {
-		m_trucks.add(truck);
+		truck.setCompany(m_obj);
 		m_arriving.add(truck);
 	}
 
@@ -102,6 +102,9 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 	@Override
 	public void putOutOfService() {
 		for (Truck t : m_arriving) {
+			t.putOutOfService();
+		}
+		for (Truck t : m_trucks) {
 			t.putOutOfService();
 		}
 		m_arriving.clear();
