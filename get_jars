@@ -1,0 +1,3 @@
+#!/bin/bash
+wget http://tiserver02.cpt.haw-hamburg.de/htm/vs/Verkehrschaos.jar
+wget http://tiserver02.cpt.haw-hamburg.de/htm/vs/VerkehrschaosControl.jar
