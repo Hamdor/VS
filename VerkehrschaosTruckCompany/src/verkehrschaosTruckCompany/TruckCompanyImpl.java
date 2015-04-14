@@ -35,11 +35,12 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
     	m_obj = obj;
     }
     
-    public void run(final NamingContextExt ncontext, final String pos) {
+    public void run(final NamingContextExt ncontext, final String pos,
+                    final String streets_name) {
     	// Register for location
     	Streets streets = null;
     	try {
-    		org.omg.CORBA.Object obj = ncontext.resolve_str("Streets");
+            org.omg.CORBA.Object obj = ncontext.resolve_str(streets_name);
     		streets = StreetsHelper.narrow(obj);
     		streets.claim(m_obj, pos);
 			m_running.acquire();
@@ -68,7 +69,9 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 
 	@Override
 	public void removeTruck(Truck truck) {
-		m_trucks.remove(truck);
+		if (m_trucks.contains(truck)) {
+			m_trucks.remove(truck);
+		}
 		if (m_arriving.contains(truck)) {
 			m_arriving.remove(truck);
 		}

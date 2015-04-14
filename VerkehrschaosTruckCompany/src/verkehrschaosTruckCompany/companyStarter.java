@@ -24,6 +24,7 @@ public class companyStarter {
 		// Get input for company name and comapany location
 		String company_name = "";
 		String company_pos  = "";
+		String streets_name = "Streets";
 		for (int i = 0; i < args.length; ++i) {
 			if (args[i].contains("--name=")) {
 				String[] splitted = args[i].split("=");
@@ -32,6 +33,10 @@ public class companyStarter {
 			if (args[i].contains("--location=")) {
 				String[] splitted = args[i].split("=");
 				company_pos = splitted.length == 2 ? splitted[1] : "";
+			}
+			if (args[i].contains("--streets=")) {
+				String[] splitted = args[i].split("=");
+				streets_name = splitted.length == 2 ? splitted[1] : "";
 			}
 			if (args[i].contains("--build-in-props")) {
 				props = new Properties();
@@ -43,6 +48,7 @@ public class companyStarter {
 				System.out.println("Arguments:");
 				System.out.println("--name=arg       Set the company name");
 				System.out.println("--location=arg   Set the location of the company");
+				System.out.println("--streets=arg    Set the name of streets (Default: Streets)");
 				System.out.println("                 Valid locations: nord, ost, sued, west");
 				System.out.println("--build-in-props Use build in properties as ORB Arguments");
 				System.out.println("--help           Print this help message");
@@ -60,6 +66,10 @@ public class companyStarter {
 			System.out.println("No valid location specified! Set location with `--location=...`");
 			System.out.println("Valid locations are: nord, sued, west, ost");
 			System.exit(-3);
+		}
+		if (streets_name.isEmpty()) {
+			System.out.println("No valid name for streets specified! Set with `--streets=...`");
+			System.exit(-4);
 		}
 		// Init ORB
 		final ORB orb = ORB.init(args, props);
@@ -81,7 +91,7 @@ public class companyStarter {
 		    nc.rebind(path, href);
 		    // Register for location and start our duty...
 		    // This call is blocking until program has to exit
-		    company.run(nc, company_pos);
+            company.run(nc, company_pos, streets_name);
 		    // unbind object from name service
 		    nc.unbind(path);
 		} catch (InvalidName | AdapterInactive | ServantNotActive |
