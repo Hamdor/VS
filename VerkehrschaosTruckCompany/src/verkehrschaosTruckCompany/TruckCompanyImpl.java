@@ -64,54 +64,73 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 
 	@Override
 	public void addTruck(Truck truck) {
-		m_trucks.add(truck);
+		synchronized(m_trucks) {
+			m_trucks.add(truck);
+		}
 	}
 
 	@Override
 	public void removeTruck(Truck truck) {
-		if (m_trucks.contains(truck)) {
-			m_trucks.remove(truck);
+		synchronized(m_trucks) {
+			if (m_trucks.contains(truck)) {
+				m_trucks.remove(truck);
+			}
 		}
-		if (m_arriving.contains(truck)) {
-			m_arriving.remove(truck);
+		synchronized(m_arriving) {
+			if (m_arriving.contains(truck)) {
+				m_arriving.remove(truck);
+			}
 		}
 	}
 
 	@Override
 	public int getTrucks(TTruckListHolder trucks) {
-		trucks.value = new Truck[m_trucks.size()];
-		if (!m_trucks.isEmpty()) {
-			m_trucks.toArray(trucks.value);
+		// TODO abgefahren trucks dürfen hier nicht mehr drin sein...
+		synchronized(m_trucks) {
+			trucks.value = new Truck[m_trucks.size()];
+			if (!m_trucks.isEmpty()) {
+				m_trucks.toArray(trucks.value);
+			}
+		    return m_trucks == null ? 0 : m_trucks.size();
 		}
-	    return m_trucks == null ? 0 : m_trucks.size();
 	}
 
 	@Override
 	public void leave(Truck truck) {
-		m_trucks.remove(truck);
+		synchronized(m_trucks) {
+			m_trucks.remove(truck);
+		}
 	}
 
 	@Override
 	public void advise(Truck truck) {
 		truck.setCompany(m_obj);
-		m_arriving.add(truck);
+		synchronized(m_arriving) {
+			m_arriving.add(truck);
+		}
 	}
 
 	@Override
 	public void arrive(Truck truck) {
-		m_arriving.remove(truck);
+		synchronized(m_arriving) {
+			m_arriving.remove(truck);
+		}
 	}
 
 	@Override
 	public void putOutOfService() {
-		for (Truck t : m_arriving) {
-			t.putOutOfService();
+		synchronized(m_arriving) {
+			for (Truck t : m_arriving) {
+				t.putOutOfService();
+			}
+			m_arriving.clear();
 		}
-		for (Truck t : m_trucks) {
-			t.putOutOfService();
+		synchronized(m_trucks) {
+			for (Truck t : m_trucks) {
+				t.putOutOfService();
+			}
+			m_trucks.clear();
 		}
-		m_arriving.clear();
-		m_trucks.clear();
 		m_running.release();
 	}
 }
