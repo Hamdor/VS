@@ -29,6 +29,7 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
     	m_trucks = new ArrayList<Truck>();
     	m_arriving = new ArrayList<Truck>();
     	m_running = new Semaphore(0);
+    	m_obj = null;
     }
     
     public void setObj(final TruckCompany obj) {
@@ -85,14 +86,21 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 
 	@Override
 	public int getTrucks(TTruckListHolder trucks) {
-		// TODO abgefahren trucks dürfen hier nicht mehr drin sein...
+		ArrayList<Truck> resu = null;
 		synchronized(m_trucks) {
-			trucks.value = new Truck[m_trucks.size()];
-			if (!m_trucks.isEmpty()) {
-				m_trucks.toArray(trucks.value);
-			}
-		    return m_trucks == null ? 0 : m_trucks.size();
+			// Copy all trucks of this company into temp ArrayList
+			resu = new ArrayList<Truck>(m_trucks);
 		}
+		synchronized(m_arriving) {
+			// Remove trucks which have not arrived yet
+			for (Truck t : m_arriving) {
+				resu.remove(t);
+			}
+		}
+		// Set return value
+		trucks.value = new Truck[resu.size()];
+		resu.toArray(trucks.value);
+		return resu.size();
 	}
 
 	@Override
@@ -116,21 +124,30 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 			m_arriving.remove(truck);
 		}
 	}
+	
+	private void putOutOfService(ArrayList<Truck> list) {
+		// Copy arrays to temp arrays:
+		// `Truck::putOutOfService()` will be executed
+		// in another thread and we can't lock
+		// `m_arriving` and `m_trucks` here due to this loops
+		// the remote object will call `TruckCompanyImpl::removeTruck()`
+		// which also locks these arrays and modifies them.
+		ArrayList<Truck> tmp = null;
+		synchronized(list) {
+			tmp = new ArrayList<Truck>(list);
+		}
+		for (Truck t : tmp) {
+			t.putOutOfService();
+		}
+		synchronized(list) {
+			list.clear();
+		}
+	}
 
 	@Override
 	public void putOutOfService() {
-		synchronized(m_arriving) {
-			for (Truck t : m_arriving) {
-				t.putOutOfService();
-			}
-			m_arriving.clear();
-		}
-		synchronized(m_trucks) {
-			for (Truck t : m_trucks) {
-				t.putOutOfService();
-			}
-			m_trucks.clear();
-		}
+		putOutOfService(m_arriving);
+		putOutOfService(m_trucks);
 		m_running.release();
 	}
 }

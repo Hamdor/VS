@@ -1,6 +1,7 @@
 package verkehrschaosTruck;
 
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.omg.CosNaming.NamingContextExt;
 import org.omg.CosNaming.NamingContextPackage.CannotProceed;
@@ -12,16 +13,16 @@ import verkehrschaos.TruckCompany;
 import verkehrschaos.TruckCompanyHelper;
 
 public class TruckImpl extends verkehrschaos.TruckPOA {
-	private String m_name;
-	private TruckCompany m_company;
-	private Truck m_obj;
-	private Semaphore m_running;
+	private String                        m_name;
+	private AtomicReference<TruckCompany> m_company;
+	private Truck                         m_obj;
+	private Semaphore                     m_running;
 	
 	private final boolean m_print_coords = true;
 	
 	TruckImpl(final String name) {
 		m_name = name;
-		m_company = null;
+		m_company = new AtomicReference<TruckCompany>();
 		m_obj = null;
 		m_running = new Semaphore(0);
 	}
@@ -54,12 +55,12 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 
 	@Override
 	public TruckCompany getCompany() {
-		return m_company;
+		return m_company.get();
 	}
 
 	@Override
 	public void setCompany(TruckCompany company) {
-		m_company = company;
+		m_company.set(company);
 		company.addTruck(m_obj);
 	}
 
@@ -72,7 +73,7 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 
 	@Override
 	public void putOutOfService() {
-		m_company.removeTruck(m_obj);
+		m_company.get().removeTruck(m_obj);
 		m_running.release();
 	}
 }

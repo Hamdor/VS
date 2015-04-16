@@ -19,6 +19,9 @@ import verkehrschaos.TruckCompany;
 import verkehrschaos.TruckCompanyHelper;
 
 public class companyStarter {
+	
+	static final long sleep_time = 500; // Sleep for 500ms after ORB.shutdown()
+	
 	public static void main(String[] args) {
 		Properties props = null;
 		// Get input for company name and comapany location
@@ -102,6 +105,11 @@ public class companyStarter {
 		} finally {
 		    // Shutdown ORB
 			orb.shutdown(true);
+			try {
+				Thread.sleep(sleep_time);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 }
