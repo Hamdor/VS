@@ -32,6 +32,7 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 			org.omg.CORBA.Object obj = ncontext.resolve_str(company_name);
 			TruckCompany company = TruckCompanyHelper.narrow(obj);
 			setCompany(company);
+			company.addTruck(m_obj);
 			m_running.acquire();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -61,7 +62,6 @@ public class TruckImpl extends verkehrschaos.TruckPOA {
 	@Override
 	public void setCompany(TruckCompany company) {
 		m_company.set(company);
-		company.addTruck(m_obj);
 	}
 
 	@Override

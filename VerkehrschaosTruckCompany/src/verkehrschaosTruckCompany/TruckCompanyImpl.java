@@ -116,6 +116,7 @@ public class TruckCompanyImpl extends verkehrschaos.TruckCompanyPOA {
 		synchronized(m_arriving) {
 			m_arriving.add(truck);
 		}
+		addTruck(truck);
 	}
 
 	@Override
