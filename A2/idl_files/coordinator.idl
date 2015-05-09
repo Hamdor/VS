@@ -1,0 +1,51 @@
+// Interface definition for coordinator
+module coordinator {
+  typedef sequenze<string> starterNames;
+  interface coordinator {
+    /**
+     * Register a ggT Prozess (Worker) at coordinator side
+     * @param typeId  Unknown
+     * @param whom    Identifier of ggT Prozess (Worker)
+     */
+    void register(in long typeId, in string whom);
+
+    /**
+     * Called from a ggT prozess to inform about current state
+     * @param whom      Identifier of ggT Prozess (Worker)
+     * @param seqNr     Sequenz Number
+     * @param finished  TRUE  when ggT is finished
+     *                  FALSE when ggT is not finished
+     * @param current   Last calculated ggT, if finished is TRUE this value
+     *                  represent the result
+     */
+    void inform(in string whom, in long seqNr, in boolean finished, in long current);
+
+    /**
+     * Returns a list of all starters
+     * @returns the names of available starts
+     *          this is a list over strings
+     */
+    starterNames getStarter();
+
+    /**
+     * Kick off a calculation
+     * @param monitor     Name of monitor
+     * @param ggTLower    Lower interval for ggT prozess count (Workers)
+     * @param ggTUpper    Upper interval for ggT Prozess count (Workers)
+     * @param delayLower  Lower interval for delay (is this really needed?)
+     * @param delayUpper  Upper interval for delay
+     * @param period      Period for system state
+     * @param expectedggt Expected ggT
+     */
+    void calculate(in string monitor, in long ggTLower, in long ggTUpper,
+                   in long delayLower, in long delayUpper, in long period,
+                   in long expectedggT);
+
+    /**
+     * Kills a starter, the starter has to terminate all of its child prozesses
+     * @param whom Identifier of starter
+     */
+    void kill(in string whom);
+  };
+};
+

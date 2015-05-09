@@ -1,0 +1,27 @@
+// Interface definition for worker (ggT)
+module worker {
+  interface worker {
+    /**
+     * Initialize the worker with values
+     * @param left  Identifier for left worker
+     * @param right Identifier for right worker
+     * @param value Start value for caluclation
+     * @param delay Maximum delay 14:27
+     * @param Identifier for monitor
+     */
+    void init(in string left, in string right, in long value, in long delay,
+              in string monitor);
+
+    /**
+     * Called from another worker to share its result with left and right worker
+     * @param sender Identifier of worker who send this request
+     * @param value  Value of result to share
+     */
+    void shareResult(in string sender, in long value);
+
+    /**
+     * Kill the ggT Prozess (Worker)
+     */
+    void kill();
+  };
+};

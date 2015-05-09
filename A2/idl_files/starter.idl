@@ -1,0 +1,15 @@
+// Interface definition of starter
+module starter {
+  interface starter {
+    /**
+     * Start the expected number of worker prozesses (ggT)
+     * @param number  Number of prozesses to start
+     */
+    void startWorker(in long number);
+
+    /**
+     * Kills the starter and all of its worker processes
+     */
+    void kill();
+  };
+};
