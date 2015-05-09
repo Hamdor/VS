@@ -1,6 +1,6 @@
 // Interface definition for worker (ggT)
 module worker {
-  interface worker {
+  interface Worker {
     /**
      * Initialize the worker with values
      * @param left  Identifier for left worker

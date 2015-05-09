@@ -1,6 +1,6 @@
 // Interface definition of starter
 module starter {
-  interface starter {
+  interface Starter {
     /**
      * Start the expected number of worker prozesses (ggT)
      * @param number  Number of prozesses to start

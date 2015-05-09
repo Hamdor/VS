@@ -1,6 +1,0 @@
-// Interface definition of Client
-module Client {
-  interface Client {
-  };
-};
-
