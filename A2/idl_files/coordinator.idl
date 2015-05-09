@@ -9,6 +9,12 @@ module coordinator {
     void register(in string whom);
 
     /**
+     * Register a new Starter at coordinator side
+     * @param whom    Identifier of starter
+     */
+    void register_starter(in string whom);
+
+    /**
      * Called from a ggT prozess to inform about current state
      * @param whom      Identifier of ggT Prozess (Worker)
      * @param seqNr     Sequenz Number
