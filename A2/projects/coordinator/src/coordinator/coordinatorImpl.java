@@ -1,33 +1,39 @@
 package coordinator;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Set;
 
 public class coordinatorImpl extends CoordinatorPOA {
 	
 	private String m_name;
-	private ArrayList<String> m_workers;
-	private ArrayList<String> m_starters;
+	private HashMap<String, ArrayList<String>> m_registry;
 	
 	public coordinatorImpl(final String name) {
-		m_name     = name;
-		m_workers  = new ArrayList<String>();
-		m_starters = new ArrayList<String>();
+		m_name    = name;
+		m_registry = new HashMap<String, ArrayList<String>>();
 	}
-
+	
 	@Override
-	public void register(String whom) {
-		synchronized(m_workers) {
-			if (!m_workers.contains(whom)) {
-				m_workers.add(whom);
+	public void register(String whom, String owner) {
+		synchronized(m_registry) {
+			ArrayList<String> workerList = m_registry.get(owner);
+			if (workerList == null) {
+				// if this happens the starter didn't register itself to
+				// the coordinator. This should never happen...
+				System.out.println("[WARNING]: Register Worker, but Starter was not known before...");
+				workerList = new ArrayList<String>();
+				m_registry.put(owner, workerList);
 			}
+			workerList.add(whom);
 		}
 	}
 	
 	@Override
 	public void register_starter(String whom) {
-		synchronized(m_starters) {
-			if (!m_starters.contains(whom)) {
-				m_starters.add(whom);
+		synchronized(m_registry) {
+			if (m_registry.get(whom) == null) {
+				m_registry.put(whom, new ArrayList<String>());
 			}
 		}
 	}
@@ -40,8 +46,15 @@ public class coordinatorImpl extends CoordinatorPOA {
 
 	@Override
 	public String[] getStarter() {
-		synchronized(m_workers) {
-		    return m_workers.toArray(new String[m_workers.size()]);
+		synchronized(m_registry) {
+		    //return m_registry.toArray(new String[m_registry.size()]);
+			Set<String> keys = m_registry.keySet();
+			String[] result = new String[keys.size()];
+			int idx = 0;
+			for (String s : keys) {
+				result[idx++] = s;
+			}
+			return result;
 		}
 	}
 
