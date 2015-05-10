@@ -5,8 +5,9 @@ module coordinator {
     /**
      * Register a ggT Prozess (Worker) at coordinator side
      * @param whom    Identifier of ggT Prozess (Worker)
+     * @param owner   Identifier of the starter
      */
-    void register(in string whom);
+    void register(in string whom, in string owner);
 
     /**
      * Register a new Starter at coordinator side
