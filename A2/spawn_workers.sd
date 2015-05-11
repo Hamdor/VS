@@ -1,0 +1,16 @@
+actor:Actor
+client:Client
+coordinator:Coordinator
+starter:Starter
+/worker1:Worker[t]
+/worker2:Worker[t]
+
+actor:client.eingabe(...)
+client:coordinator.calculate(monitor,0,42,0,10,6)
+coordinator:starter.startWorker(2)
+starter:worker1.new
+worker1:coordinator.register(worker1)
+starter:worker2.new
+worker2:coordinator.register(worker2)
+coordinator:worker1.init(...)
+coordinator:worker2.init(...)
