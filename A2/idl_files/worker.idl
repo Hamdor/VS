@@ -20,6 +20,12 @@ module worker {
     void shareResult(in string sender, in long value);
 
     /**
+     * Send a snapshot request to worker
+     * @param sender The sender of the marker
+     */
+    void snapshot(in string sender);
+
+    /**
      * Kill the ggT Prozess (Worker)
      */
     void kill();
