@@ -1,0 +1,26 @@
+#!/bin/bash
+outfolder=out
+idlj -td $outfolder -f all worker.idl
+idlj -td $outfolder -f all coordinator.idl
+idlj -td $outfolder -f all starter.idl
+idlj -td $outfolder -f all monitor.idl
+
+cp -R out/worker/ ../projects/worker/src/
+cp -R out/worker/ ../projects/coordinator/src/
+cp -R out/worker/ ../projects/starter/src/
+cp -R out/worker/ ../projects/client/src/
+
+cp -R out/coordinator/ ../projects/worker/src/
+cp -R out/coordinator/ ../projects/coordinator/src/
+cp -R out/coordinator/ ../projects/starter/src/
+cp -R out/coordinator/ ../projects/client/src/
+
+cp -R out/starter/ ../projects/worker/src/
+cp -R out/starter/ ../projects/coordinator/src/
+cp -R out/starter/ ../projects/starter/src/
+cp -R out/starter/ ../projects/client/src/
+
+cp -R out/monitor/ ../projects/worker/src/
+cp -R out/monitor/ ../projects/coordinator/src/
+cp -R out/monitor/ ../projects/starter/src/
+cp -R out/monitor/ ../projects/client/src/
