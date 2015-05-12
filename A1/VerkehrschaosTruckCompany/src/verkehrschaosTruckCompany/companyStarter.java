@@ -104,12 +104,12 @@ public class companyStarter {
 			e.printStackTrace();
 		} finally {
 		    // Shutdown ORB
-			orb.shutdown(true);
 			try {
 				Thread.sleep(sleep_time);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+                        orb.shutdown(true);
 		}
 	}
 }
