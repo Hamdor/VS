@@ -52,6 +52,11 @@ module coordinator {
      * @param whom Identifier of starter
      */
     void kill(in string whom);
+
+    /**
+     * This call terminates the coordinator and all of its starters
+     */
+     void terminate();
   };
 };
 

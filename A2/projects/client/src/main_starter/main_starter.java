@@ -31,7 +31,7 @@ public class main_starter {
     str.append("--build-in-props    Use the build in ORB arguments\n");
     str.append("--help              Print this help message\n");
     str.append("ORB Arguments are passed to CORBA Framework");
-    System.out.print(str);
+    System.out.println(str);
   }
 
   private static String read_argument(final String line) {
@@ -129,31 +129,41 @@ public class main_starter {
   };
 
   private console_input parse(final String input) {
-    console_code code = console_code.UNKNOWN;
+    console_input result = new console_input(console_code.UNKNOWN);
+    String[] splitted;
     for (String s : inputs) {
       if (input.toLowerCase().contains(s)) {
         switch(s) {
         case "help":
-          code = console_code.HELP;
+          result.m_code = console_code.HELP;
           break;
         case "kill":
-          code = console_code.KILL;
+          result.m_code = console_code.KILL;
+          splitted = input.split(" ");
+          if (splitted.length == 2) {
+        	  result.m_opt    = new String[1];
+        	  result.m_opt[0] = splitted[1];
+          }
           break;
         case "kills":
-          code = console_code.KILLS;
-          // TODO: Parse arguments
+          result.m_code = console_code.KILLS;
+          splitted = input.split(" ");
+          if (splitted.length == 2) {
+        	  result.m_opt    = new String[1];
+        	  result.m_opt[0] = splitted[1];
+          }
           break;
         case "calculate":
-          code = console_code.CALCULATE;
+          result.m_code = console_code.CALCULATE;
           // TODO: Parse arguments
           break;
         case "exit":
-          code = console_code.EXIT;
+          result.m_code = console_code.EXIT;
           break;
         }
       }
     }
-    return new console_input(code);
+    return result;
   }
 
 final String shell_header = " ____    __              ___    ___      \n" +
@@ -172,9 +182,9 @@ final String shell_header = " ____    __              ___    ___      \n" +
       if (input.m_code == console_code.HELP) {
         // Print commands
       } else if(input.m_code == console_code.KILL) {
-        // Kill coordinator
+    	m_coordinator.terminate();
       } else if(input.m_code == console_code.KILLS) {
-        // Kill starter
+    	m_coordinator.kill(input.m_opt[0]); // Kill starter
       } else if(input.m_code == console_code.CALCULATE) {
         // Start new calculation
       } else if(input.m_code == console_code.EXIT) {
