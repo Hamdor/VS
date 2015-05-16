@@ -1,0 +1,2 @@
+#!/bin/bash
+java -cp client/bin/:. main_starter.main_starter
