@@ -131,7 +131,7 @@ public class main_starter {
 
   final String[] descr = {
    "Show commands", "kill the coordinator", "kill a starter",
-   "start a new calculation", "exit this shell"q
+   "start a new calculation", "exit this shell"
   };
 
   private console_input parse(final String input) {
@@ -194,9 +194,9 @@ final String shell_header = " ____    __              ___    ___      \n" +
 
   private void run() {
     if (System.console() == null) {
-	    System.out.println("Please start this program from your terminal");
-		  return;
-		}
+      System.out.println("Please start this program from your terminal");
+      return;
+    }
     System.out.println(shell_header);
     while(true) {
       System.out.print("€ ");
