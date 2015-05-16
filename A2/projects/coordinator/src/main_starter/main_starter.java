@@ -3,11 +3,17 @@ package main_starter;
 import java.util.Properties;
 
 import org.omg.CORBA.ORB;
+import org.omg.CosNaming.NameComponent;
 import org.omg.CosNaming.NamingContextExt;
 import org.omg.CosNaming.NamingContextExtHelper;
+import org.omg.CosNaming.NamingContextPackage.CannotProceed;
+import org.omg.CosNaming.NamingContextPackage.InvalidName;
+import org.omg.CosNaming.NamingContextPackage.NotFound;
 import org.omg.PortableServer.POA;
 import org.omg.PortableServer.POAHelper;
 
+import coordinator.Coordinator;
+import coordinator.CoordinatorHelper;
 import coordinator.coordinatorImpl;
 
 public class main_starter {
@@ -16,6 +22,8 @@ public class main_starter {
   ORB m_orb = null;
   POA m_rootpoa = null;
   NamingContextExt m_nameingcontext = null;
+  coordinatorImpl m_obj = null;
+  NameComponent[] m_path = null;
 
   private static void print_help_message() {
     StringBuilder str = new StringBuilder();
@@ -42,6 +50,12 @@ public class main_starter {
       m_rootpoa.the_POAManager().activate();
       m_nameingcontext = NamingContextExtHelper.narrow(m_orb
           .resolve_initial_references("NameService"));
+      m_obj = new coordinatorImpl(coordinator);
+      // Register Object for CORBA
+      org.omg.CORBA.Object ref = m_rootpoa.servant_to_reference(m_obj);
+      Coordinator href = CoordinatorHelper.narrow(ref);
+      m_path = m_nameingcontext.to_name(coordinator);
+      m_nameingcontext.rebind(m_path, href);
     } catch (Exception e) {
       e.printStackTrace();
       init = false;
@@ -85,14 +99,14 @@ public class main_starter {
       System.out.println("Error initializing CORBA...");
       System.exit(-2);
     }
-    coordinatorImpl coord = new coordinatorImpl(coordinator_name);
-    coord.run();
+    instance.m_obj.run();
   }
 
   private void shutdown() {
     try {
+      m_nameingcontext.unbind(m_path);
       Thread.sleep(sleep_time);
-    } catch (InterruptedException e) {
+    } catch (InterruptedException | NotFound | CannotProceed | InvalidName e) {
       e.printStackTrace();
     }
     m_orb.shutdown(true);
