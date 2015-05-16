@@ -112,7 +112,8 @@ public class main_starter {
     KILLS,
     CALCULATE,
     EXIT,
-    UNKNOWN
+    UNKNOWN,
+    INVALID_ARGS
   };
 
   class console_input {
@@ -126,6 +127,11 @@ public class main_starter {
 
   final String[] inputs = {
     "help", "kill", "kills", "calculate", "exit"
+  };
+
+  final String[] descr = {
+   "Show commands", "kill the coordinator", "kill a starter",
+   "start a new calculation", "exit this shell"q
   };
 
   private console_input parse(final String input) {
@@ -143,6 +149,8 @@ public class main_starter {
           if (splitted.length == 2) {
         	  result.m_opt    = new String[1];
         	  result.m_opt[0] = splitted[1];
+          } else {
+            result.m_code = console_code.INVALID_ARGS;
           }
           break;
         case "kills":
@@ -151,11 +159,21 @@ public class main_starter {
           if (splitted.length == 2) {
         	  result.m_opt    = new String[1];
         	  result.m_opt[0] = splitted[1];
+          } else {
+            result.m_code = console_code.INVALID_ARGS;
           }
           break;
         case "calculate":
           result.m_code = console_code.CALCULATE;
-          // TODO: Parse arguments
+          splitted = input.split(" ");
+          if (splitted.length == 8) {
+            result.m_opt = new String[7];
+            for (int i = 0; i < result.m_opt.length; ++i) {
+              result.m_opt[i] = splitted[i+1];
+            }
+          } else {
+            result.m_code = console_code.INVALID_ARGS;
+          }
           break;
         case "exit":
           result.m_code = console_code.EXIT;
@@ -175,23 +193,42 @@ final String shell_header = " ____    __              ___    ___      \n" +
   "    \\/_____/\\/_/\\/_/\\/____/\\/____/\\/____/\n";
 
   private void run() {
+    if (System.console() == null) {
+	    System.out.println("Please start this program from your terminal");
+		  return;
+		}
     System.out.println(shell_header);
     while(true) {
-      System.out.print("$ ");
+      System.out.print("€ ");
       console_input input = parse(System.console().readLine());
       if (input.m_code == console_code.HELP) {
-        // Print commands
+        StringBuilder str = new StringBuilder();
+        str.append("Commands:\n");
+        for (int i = 0; i < descr.length; ++i) {
+          str.append(inputs[i] + " -- ");
+          str.append(descr[i] + "\n");
+        }
+        System.out.println(str);
       } else if(input.m_code == console_code.KILL) {
     	m_coordinator.terminate();
       } else if(input.m_code == console_code.KILLS) {
     	m_coordinator.kill(input.m_opt[0]); // Kill starter
       } else if(input.m_code == console_code.CALCULATE) {
         // Start new calculation
+        m_coordinator.calculate(input.m_opt[0],   // Monitor
+             Integer.getInteger(input.m_opt[1]),  // ggT Lower
+             Integer.getInteger(input.m_opt[2]),  // ggT Upper
+             Integer.getInteger(input.m_opt[3]),  // delay Lower
+             Integer.getInteger(input.m_opt[4]),  // delay Upper
+             Integer.getInteger(input.m_opt[5]),  // perid
+             Integer.getInteger(input.m_opt[6])); // expected ggT
       } else if(input.m_code == console_code.EXIT) {
         // Exit while loop
         break;
+      } else if(input.m_code == console_code.INVALID_ARGS) {
+        System.out.println("Invalid arguments...");
       } else {
-        // Unknown
+        System.out.println("Unknown command... (type `help` to show commands)");
       }
     }
   }
