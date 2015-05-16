@@ -93,6 +93,7 @@ public class main_starter {
     final main_starter instance = new main_starter();
     if (!instance.initCorba(props, args, coordinator_name)) {
       System.out.println("Error initializing CORBA...");
+      System.exit(-2);
     }
     instance.run();
   }
