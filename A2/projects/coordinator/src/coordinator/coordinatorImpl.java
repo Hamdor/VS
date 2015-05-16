@@ -69,4 +69,10 @@ public class coordinatorImpl extends CoordinatorPOA {
 		// TODO Auto-generated method stub
 		
 	}
+
+	@Override
+	public void terminate() {
+		// TODO Auto-generated method stub
+		
+	}
 }
