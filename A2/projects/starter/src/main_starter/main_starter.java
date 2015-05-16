@@ -97,7 +97,7 @@ public class main_starter {
       }
     }
     // Check input
-    if (starter_name.isEmpty()) {
+    if (starter_name.isEmpty() || coordinator_name.isEmpty()) {
       print_help_message();
       System.exit(-1);
     }

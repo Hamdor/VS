@@ -1,5 +1,6 @@
 package worker;
 
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.SynchronousQueue;
 
 public class workerImpl extends WorkerPOA {
@@ -7,6 +8,7 @@ public class workerImpl extends WorkerPOA {
   private Thread m_thread;
   private SynchronousQueue<Job> m_jobs;
   private boolean run = true;
+  private Semaphore m_sema;
 
   public workerImpl(final String name) {
     m_name = name;
@@ -24,7 +26,16 @@ public class workerImpl extends WorkerPOA {
         }
       }
     });
+    m_sema = new Semaphore(0);
     m_thread.start();
+  }
+
+  public void run() {
+    try {
+      m_sema.acquire();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
   @Override
@@ -42,8 +53,8 @@ public class workerImpl extends WorkerPOA {
 
   @Override
   public void kill() {
-    // TODO Auto-generated method stub
-
+    // TODO: What has to be done here for a clean shutdown?
+    m_sema.release();
   }
 
   @Override
