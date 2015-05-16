@@ -21,13 +21,13 @@ public class main_starter {
 
   ORB m_orb = null;
   POA m_rootpoa = null;
-  NamingContextExt m_nameingcontext = null;
+  NamingContextExt m_namingcontext = null;
   coordinatorImpl m_obj = null;
   NameComponent[] m_path = null;
 
   private static void print_help_message() {
     StringBuilder str = new StringBuilder();
-    str.append("Usage: java -cp . client [Options...]\n");
+    str.append("Usage: java -cp . coordinator [Options...]\n");
     str.append("Arguments:\n");
     str.append("--name=arg          Set the coordinator name\n");
     str.append("--build-in-props    Use the build in ORB arguments\n");
@@ -48,14 +48,14 @@ public class main_starter {
     try {
       m_rootpoa = POAHelper.narrow(m_orb.resolve_initial_references("RootPOA"));
       m_rootpoa.the_POAManager().activate();
-      m_nameingcontext = NamingContextExtHelper.narrow(m_orb
+      m_namingcontext = NamingContextExtHelper.narrow(m_orb
           .resolve_initial_references("NameService"));
       m_obj = new coordinatorImpl(coordinator);
       // Register Object for CORBA
       org.omg.CORBA.Object ref = m_rootpoa.servant_to_reference(m_obj);
       Coordinator href = CoordinatorHelper.narrow(ref);
-      m_path = m_nameingcontext.to_name(coordinator);
-      m_nameingcontext.rebind(m_path, href);
+      m_path = m_namingcontext.to_name(coordinator);
+      m_namingcontext.rebind(m_path, href);
     } catch (Exception e) {
       e.printStackTrace();
       init = false;
@@ -104,7 +104,7 @@ public class main_starter {
 
   private void shutdown() {
     try {
-      m_nameingcontext.unbind(m_path);
+      m_namingcontext.unbind(m_path);
       Thread.sleep(sleep_time);
     } catch (InterruptedException | NotFound | CannotProceed | InvalidName e) {
       e.printStackTrace();
