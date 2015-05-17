@@ -12,6 +12,10 @@ import org.omg.CosNaming.NamingContextPackage.NotFound;
 import org.omg.PortableServer.POA;
 import org.omg.PortableServer.POAHelper;
 
+import coordinator.Coordinator;
+import coordinator.CoordinatorHelper;
+import starter.Starter;
+import starter.StarterHelper;
 import worker.Worker;
 import worker.WorkerHelper;
 import worker.workerImpl;
@@ -24,6 +28,8 @@ public class main_starter {
   NamingContextExt m_nameingcontext = null;
   workerImpl m_obj = null;
   NameComponent[] m_path = null;
+  Coordinator m_coordinator = null;
+  Starter m_starter = null;
 
   private static void print_help_message() {
     StringBuilder str = new StringBuilder();
@@ -44,7 +50,7 @@ public class main_starter {
   }
 
   private boolean initCorba(final Properties props, final String[] args,
-      final String coordinator, final String starter_name,
+      final String coordinator_name, final String starter_name,
       final String worker_name) {
     boolean init = true;
     m_orb = ORB.init(args, props);
@@ -53,16 +59,21 @@ public class main_starter {
       m_rootpoa.the_POAManager().activate();
       m_nameingcontext = NamingContextExtHelper.narrow(m_orb
           .resolve_initial_references("NameService"));
-      // TODO: Get reference to coordinator
-      // and register at coordinator...
-      // TODO: Get reference to starter
-      // ...
+      // Get reference to starter
+      org.omg.CORBA.Object obj = m_nameingcontext.resolve_str(starter_name);
+      m_starter = StarterHelper.narrow(obj);
+      // Get reference to coordinator
+      obj = m_nameingcontext.resolve_str(coordinator_name);
+      m_coordinator = CoordinatorHelper.narrow(obj);
+      // Create worker object
       m_obj = new workerImpl(worker_name);
       // Register Object for CORBA
       org.omg.CORBA.Object ref = m_rootpoa.servant_to_reference(m_obj);
       Worker href = WorkerHelper.narrow(ref);
       m_path = m_nameingcontext.to_name(worker_name);
       m_nameingcontext.rebind(m_path, href);
+      // Register at coordinator
+      m_coordinator.register(worker_name, starter_name);
     } catch (Exception e) {
       e.printStackTrace();
       init = false;
