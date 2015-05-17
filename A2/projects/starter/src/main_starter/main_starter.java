@@ -31,6 +31,12 @@ public class main_starter {
     return s_namingcontext;
   }
 
+  private static String s_coordinator_name = "";
+
+  public static final String get_coordinator_name() {
+    return s_coordinator_name;
+  }
+
   private ORB m_orb = null;
   private POA m_rootpoa = null;
   private starterImpl m_obj = null;
@@ -58,6 +64,7 @@ public class main_starter {
       final String coordinator_name, final String starter_name) {
     boolean init = true;
     m_orb = ORB.init(args, props);
+    s_coordinator_name = coordinator_name;
     try {
       m_rootpoa = POAHelper.narrow(m_orb.resolve_initial_references("RootPOA"));
       m_rootpoa.the_POAManager().activate();
