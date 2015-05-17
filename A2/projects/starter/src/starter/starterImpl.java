@@ -22,8 +22,13 @@ public class starterImpl extends StarterPOA {
 
   @Override
   public void startWorker(int number) {
-    // TODO Auto-generated method stub
-
+    while(number-- > 0) {
+      // TODO: Fork into new jvms with correct arguments
+      //       1. Generate Global name for worker
+      //          ==> Maybe machine id + starter name + number
+      //       2. Fork program
+      //       3. done => worker should do the rest...
+    }
   }
 
   @Override

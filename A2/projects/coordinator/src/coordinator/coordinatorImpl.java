@@ -52,14 +52,13 @@ public class coordinatorImpl extends CoordinatorPOA {
 
   @Override
   public void inform(String whom, int seqNr, boolean finished, int current) {
-    // TODO Auto-generated method stub
-
+    // TODO:  I think this has to be send to the monitor
+    //        called from worker who got marker message (after worker got all results)
   }
 
   @Override
   public String[] getStarter() {
     synchronized (m_registry) {
-      // return m_registry.toArray(new String[m_registry.size()]);
       Set<String> keys = m_registry.keySet();
       String[] result = new String[keys.size()];
       int idx = 0;
@@ -73,18 +72,26 @@ public class coordinatorImpl extends CoordinatorPOA {
   @Override
   public void calculate(String monitor, int ggTLower, int ggTUpper,
       int delayLower, int delayUpper, int period, int expectedggT) {
-    // TODO Auto-generated method stub
+    // TODO: 1. Start workers
+    //       2. Wait for workers
+    //       3. Build ring of workers
+    //       4. Kick off calculation
   }
 
   @Override
   public void kill(String whom) {
-    // TODO Auto-generated method stub
-
+    // TODO: Kill a starter
+    //       1. Get reference to starter
+    //       2. Call kill function on starter
+    //           ==> Starter will terminate its workers?
   }
 
   @Override
   public void terminate() {
-    // TODO: Kill all starters
+    // Kill all starters
+    for (String s : getStarter()) {
+      kill(s);
+    }
     m_sema.release();
   }
 }
