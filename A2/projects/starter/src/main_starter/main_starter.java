@@ -12,6 +12,8 @@ import org.omg.CosNaming.NamingContextPackage.NotFound;
 import org.omg.PortableServer.POA;
 import org.omg.PortableServer.POAHelper;
 
+import coordinator.Coordinator;
+import coordinator.CoordinatorHelper;
 import starter.Starter;
 import starter.StarterHelper;
 import starter.starterImpl;
@@ -24,6 +26,7 @@ public class main_starter {
   NamingContextExt m_nameingcontext = null;
   starterImpl m_obj = null;
   NameComponent[] m_path = null;
+  Coordinator m_coordinator = null;
 
   private static void print_help_message() {
     StringBuilder str = new StringBuilder();
@@ -43,7 +46,7 @@ public class main_starter {
   }
 
   private boolean initCorba(final Properties props, final String[] args,
-      final String coordinator, final String starter_name) {
+      final String coordinator_name, final String starter_name) {
     boolean init = true;
     m_orb = ORB.init(args, props);
     try {
@@ -51,14 +54,18 @@ public class main_starter {
       m_rootpoa.the_POAManager().activate();
       m_nameingcontext = NamingContextExtHelper.narrow(m_orb
           .resolve_initial_references("NameService"));
-      // TODO: Get reference to coordinator
-      // and register at coordinator...
+      // Get reference to coordinator
+      org.omg.CORBA.Object obj = m_nameingcontext.resolve_str(coordinator_name);
+      m_coordinator = CoordinatorHelper.narrow(obj);
+      // Create starter object
       m_obj = new starterImpl(starter_name);
       // Register Object for CORBA
       org.omg.CORBA.Object ref = m_rootpoa.servant_to_reference(m_obj);
       Starter href = StarterHelper.narrow(ref);
       m_path = m_nameingcontext.to_name(starter_name);
       m_nameingcontext.rebind(m_path, href);
+      // Register object at coordinator
+      m_coordinator.register_starter(starter_name);
     } catch (Exception e) {
       e.printStackTrace();
       init = false;
