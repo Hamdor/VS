@@ -17,13 +17,22 @@ import coordinator.CoordinatorHelper;
 import coordinator.coordinatorImpl;
 
 public class main_starter {
-  static final long sleep_time = 500; // Sleep for 500ms before ORB.shutdown()
+  private static final long sleep_time = 500; // Sleep for 500ms before ORB.shutdown()
 
-  ORB m_orb = null;
-  POA m_rootpoa = null;
-  NamingContextExt m_namingcontext = null;
-  coordinatorImpl m_obj = null;
-  NameComponent[] m_path = null;
+  private static NamingContextExt s_namingcontext = null;
+
+  /**
+   * Can be used from other parts of the program to get the
+   * NamingContextExt
+   */
+  public static final NamingContextExt get_naming_context() {
+    return s_namingcontext;
+  }
+
+  private ORB m_orb = null;
+  private POA m_rootpoa = null;
+  private coordinatorImpl m_obj = null;
+  private NameComponent[] m_path = null;
 
   private static void print_help_message() {
     StringBuilder str = new StringBuilder();
@@ -48,14 +57,14 @@ public class main_starter {
     try {
       m_rootpoa = POAHelper.narrow(m_orb.resolve_initial_references("RootPOA"));
       m_rootpoa.the_POAManager().activate();
-      m_namingcontext = NamingContextExtHelper.narrow(m_orb
+      s_namingcontext = NamingContextExtHelper.narrow(m_orb
           .resolve_initial_references("NameService"));
       m_obj = new coordinatorImpl(coordinator);
       // Register Object for CORBA
       org.omg.CORBA.Object ref = m_rootpoa.servant_to_reference(m_obj);
       Coordinator href = CoordinatorHelper.narrow(ref);
-      m_path = m_namingcontext.to_name(coordinator);
-      m_namingcontext.rebind(m_path, href);
+      m_path = s_namingcontext.to_name(coordinator);
+      s_namingcontext.rebind(m_path, href);
     } catch (Exception e) {
       e.printStackTrace();
       init = false;
@@ -104,7 +113,7 @@ public class main_starter {
 
   private void shutdown() {
     try {
-      m_namingcontext.unbind(m_path);
+      s_namingcontext.unbind(m_path);
       Thread.sleep(sleep_time);
     } catch (InterruptedException | NotFound | CannotProceed | InvalidName e) {
       e.printStackTrace();

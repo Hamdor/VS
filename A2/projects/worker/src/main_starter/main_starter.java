@@ -21,15 +21,24 @@ import worker.WorkerHelper;
 import worker.workerImpl;
 
 public class main_starter {
-  static final long sleep_time = 500; // Sleep for 500ms before ORB.shutdown()
+  private static final long sleep_time = 500; // Sleep for 500ms before ORB.shutdown()
 
-  ORB m_orb = null;
-  POA m_rootpoa = null;
-  NamingContextExt m_nameingcontext = null;
-  workerImpl m_obj = null;
-  NameComponent[] m_path = null;
-  Coordinator m_coordinator = null;
-  Starter m_starter = null;
+  private static NamingContextExt s_nameingcontext = null;
+
+  /**
+   * Can be used from other parts of the program to get the
+   * NamingContextExt
+   */
+  public static final NamingContextExt get_naming_context() {
+    return s_nameingcontext;
+  }
+
+  private ORB m_orb = null;
+  private POA m_rootpoa = null;
+  private workerImpl m_obj = null;
+  private NameComponent[] m_path = null;
+  private Coordinator m_coordinator = null;
+  private Starter m_starter = null;
 
   private static void print_help_message() {
     StringBuilder str = new StringBuilder();
@@ -57,21 +66,21 @@ public class main_starter {
     try {
       m_rootpoa = POAHelper.narrow(m_orb.resolve_initial_references("RootPOA"));
       m_rootpoa.the_POAManager().activate();
-      m_nameingcontext = NamingContextExtHelper.narrow(m_orb
+      s_nameingcontext = NamingContextExtHelper.narrow(m_orb
           .resolve_initial_references("NameService"));
       // Get reference to starter
-      org.omg.CORBA.Object obj = m_nameingcontext.resolve_str(starter_name);
+      org.omg.CORBA.Object obj = s_nameingcontext.resolve_str(starter_name);
       m_starter = StarterHelper.narrow(obj);
       // Get reference to coordinator
-      obj = m_nameingcontext.resolve_str(coordinator_name);
+      obj = s_nameingcontext.resolve_str(coordinator_name);
       m_coordinator = CoordinatorHelper.narrow(obj);
       // Create worker object
       m_obj = new workerImpl(worker_name);
       // Register Object for CORBA
       org.omg.CORBA.Object ref = m_rootpoa.servant_to_reference(m_obj);
       Worker href = WorkerHelper.narrow(ref);
-      m_path = m_nameingcontext.to_name(worker_name);
-      m_nameingcontext.rebind(m_path, href);
+      m_path = s_nameingcontext.to_name(worker_name);
+      s_nameingcontext.rebind(m_path, href);
       // Register at coordinator
       m_coordinator.register(worker_name, starter_name);
     } catch (Exception e) {
@@ -131,7 +140,7 @@ public class main_starter {
 
   private void shutdown() {
     try {
-      m_nameingcontext.unbind(m_path);
+      s_nameingcontext.unbind(m_path);
       Thread.sleep(sleep_time);
     } catch (InterruptedException | NotFound | CannotProceed | InvalidName e) {
       e.printStackTrace();
