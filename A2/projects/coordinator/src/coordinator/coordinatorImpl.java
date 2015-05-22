@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.Semaphore;
 
+import monitor.Monitor;
+
 import org.omg.CosNaming.NamingContextPackage.CannotProceed;
 import org.omg.CosNaming.NamingContextPackage.InvalidName;
 import org.omg.CosNaming.NamingContextPackage.NotFound;
@@ -17,11 +19,14 @@ public class coordinatorImpl extends CoordinatorPOA {
   private String m_name;
   private HashMap<String, ArrayList<String>> m_registry;
   private Semaphore m_sema;
+  private Semaphore m_wait = null;
+  private ArrayList<String> m_newworker;
 
   public coordinatorImpl(final String name) {
     m_name = name;
     m_registry = new HashMap<String, ArrayList<String>>();
     m_sema = new Semaphore(0);
+    m_newworker = new ArrayList<String>();
   }
 
   public void run() {
@@ -46,6 +51,10 @@ public class coordinatorImpl extends CoordinatorPOA {
       }
       workerList.add(whom);
     }
+    synchronized(m_newworker) {
+      m_newworker.add(whom);
+    }
+    m_wait.release(); // add +1 to our fence...
   }
 
   @Override
@@ -80,9 +89,26 @@ public class coordinatorImpl extends CoordinatorPOA {
   public void calculate(String monitor, int ggTLower, int ggTUpper,
       int delayLower, int delayUpper, int period, int expectedggT) {
     // TODO: 1. Start workers
-    //       2. Wait for workers
+    //       2. Wait for workers (how...?)
     //       3. Build ring of workers
-    //       4. Kick off calculation
+    //       4. Call `ring` on monitor
+    //       5. Get random start values for calculation
+    //       6. Call `berechnen` on worker
+    //       7. Kick off calculation
+    // ------------------------------
+    final int num = 5;            // TODO: 1. Roll number of workers to start
+    m_wait = new Semaphore(-num); // 2. Wait for workers
+    // TODO: 3. Build ring of workers (We need the new ids...)
+    // Call ring on monitor
+    String[] s;
+    synchronized(m_newworker) {
+      s = new String[m_newworker.size()];
+      m_newworker.toArray(s);
+    }
+    main_starter.main_starter.get_monitor().ring(s);
+    // TODO: 5. Generate random start values
+    // TODO: 6. Call berechnen on monitor
+    // TOOD: 7. Kick off calculation
   }
 
   @Override
