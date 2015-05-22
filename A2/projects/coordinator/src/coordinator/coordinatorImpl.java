@@ -9,6 +9,9 @@ import org.omg.CosNaming.NamingContextPackage.CannotProceed;
 import org.omg.CosNaming.NamingContextPackage.InvalidName;
 import org.omg.CosNaming.NamingContextPackage.NotFound;
 
+import starter.Starter;
+import starter.StarterHelper;
+
 public class coordinatorImpl extends CoordinatorPOA {
 
   private String m_name;
@@ -84,10 +87,13 @@ public class coordinatorImpl extends CoordinatorPOA {
 
   @Override
   public void kill(String whom) {
-    // TODO: Kill a starter
-    //       1. Get reference to starter
-    //       2. Call kill function on starter
-    //           ==> Starter will terminate its workers?
+    try {
+      org.omg.CORBA.Object ref = main_starter.main_starter.get_naming_context().resolve_str(whom);
+      Starter sel = StarterHelper.narrow(ref);
+      sel.kill();
+    } catch (NotFound | CannotProceed | InvalidName e) {
+      e.printStackTrace();
+    }
   }
 
   @Override
