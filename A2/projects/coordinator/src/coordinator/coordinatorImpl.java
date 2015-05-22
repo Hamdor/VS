@@ -5,6 +5,10 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.Semaphore;
 
+import org.omg.CosNaming.NamingContextPackage.CannotProceed;
+import org.omg.CosNaming.NamingContextPackage.InvalidName;
+import org.omg.CosNaming.NamingContextPackage.NotFound;
+
 public class coordinatorImpl extends CoordinatorPOA {
 
   private String m_name;

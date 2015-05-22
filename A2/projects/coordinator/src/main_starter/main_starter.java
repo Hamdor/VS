@@ -2,6 +2,9 @@ package main_starter;
 
 import java.util.Properties;
 
+import monitor.Monitor;
+import monitor.MonitorHelper;
+
 import org.omg.CORBA.ORB;
 import org.omg.CosNaming.NameComponent;
 import org.omg.CosNaming.NamingContextExt;
@@ -20,6 +23,7 @@ public class main_starter {
   private static final long sleep_time = 500; // Sleep for 500ms before ORB.shutdown()
 
   private static NamingContextExt s_namingcontext = null;
+  private static Monitor s_monitor = null;
 
   /**
    * Can be used from other parts of the program to get the
@@ -27,6 +31,14 @@ public class main_starter {
    */
   public static final NamingContextExt get_naming_context() {
     return s_namingcontext;
+  }
+
+  /**
+   * Can be used from other parts of the program to get a
+   * reference to the monitor
+   */
+  public static final Monitor get_monitor() {
+    return s_monitor;
   }
 
   private ORB m_orb = null;
@@ -38,6 +50,7 @@ public class main_starter {
     StringBuilder str = new StringBuilder();
     str.append("Usage: java -cp . coordinator [Options...]\n");
     str.append("Arguments:\n");
+    str.append("--monitor=arg       Set name of monitor\n");
     str.append("--name=arg          Set the coordinator name\n");
     str.append("--build-in-props    Use the build in ORB arguments\n");
     str.append("--help              Print this help message\n");
@@ -51,7 +64,7 @@ public class main_starter {
   }
 
   private boolean initCorba(final Properties props, final String[] args,
-      final String coordinator) {
+      final String coordinator, final String monitor) {
     boolean init = true;
     m_orb = ORB.init(args, props);
     try {
@@ -65,6 +78,9 @@ public class main_starter {
       Coordinator href = CoordinatorHelper.narrow(ref);
       m_path = s_namingcontext.to_name(coordinator);
       s_namingcontext.rebind(m_path, href);
+      // Get reference to monitor
+      org.omg.CORBA.Object obj = s_namingcontext.resolve_str(monitor);
+      s_monitor = MonitorHelper.narrow(obj);
     } catch (Exception e) {
       e.printStackTrace();
       init = false;
@@ -83,8 +99,12 @@ public class main_starter {
 
   public static void main(String[] args) {
     Properties props = null;
+    String monitor_name = "";
     String coordinator_name = "";
     for (int i = 0; i < args.length; ++i) {
+      if (args[i].contains("--monitor=")) {
+        monitor_name = read_argument(args[i]);
+      }
       if (args[i].contains("--name=")) {
         coordinator_name = read_argument(args[i]);
       }
@@ -99,12 +119,12 @@ public class main_starter {
       }
     }
     // Check input
-    if (coordinator_name.isEmpty()) {
+    if (coordinator_name.isEmpty() || monitor_name.isEmpty()) {
       print_help_message();
       System.exit(-1);
     }
     final main_starter instance = new main_starter();
-    if (!instance.initCorba(props, args, coordinator_name)) {
+    if (!instance.initCorba(props, args, coordinator_name, monitor_name)) {
       System.out.println("Error initializing CORBA...");
       System.exit(-2);
     }
