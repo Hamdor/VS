@@ -20,6 +20,6 @@ public class Job {
   }
   
   public String sender() {
-    return sender;
+    return m_sender;
   }
 }
