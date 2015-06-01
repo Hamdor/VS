@@ -1,0 +1,2 @@
+#!/bin/bash
+java -jar GGTMonitor.jar monitor -ORBInitialHost localhost -ORBInitialPort 2000
