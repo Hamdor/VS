@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.Semaphore;
 
+import main_starter.log_level;
 import monitor.Monitor;
 
 import org.omg.CosNaming.NamingContextPackage.CannotProceed;
@@ -39,6 +40,8 @@ public class coordinatorImpl extends CoordinatorPOA {
 
   @Override
   public void register(String whom, String owner) {
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+                                           "coordinatorImpl", "register", "");
     synchronized (m_registry) {
       ArrayList<String> workerList = m_registry.get(owner);
       if (workerList == null) {
@@ -59,6 +62,8 @@ public class coordinatorImpl extends CoordinatorPOA {
 
   @Override
   public void register_starter(String whom) {
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+                                           "coordinatorImpl", "register_starter", "");
     synchronized (m_registry) {
       if (m_registry.get(whom) == null) {
         m_registry.put(whom, new ArrayList<String>());
@@ -68,12 +73,16 @@ public class coordinatorImpl extends CoordinatorPOA {
 
   @Override
   public void inform(String whom, int seqNr, boolean finished, int current) {
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+                                           "coordinatorImpl", "inform", "");
     // TODO:  I think this has to be send to the monitor
     //        called from worker who got marker message (after worker got all results)
   }
 
   @Override
   public String[] getStarter() {
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+                                           "coordinatorImpl", "getStarter", "");
     synchronized (m_registry) {
       Set<String> keys = m_registry.keySet();
       String[] result = new String[keys.size()];
@@ -88,6 +97,8 @@ public class coordinatorImpl extends CoordinatorPOA {
   @Override
   public void calculate(String monitor, int ggTLower, int ggTUpper,
       int delayLower, int delayUpper, int period, int expectedggT) {
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+        "coordinatorImpl", "calculate", "");
     // TODO: 1. Start workers
     //       2. Wait for workers (how...?)
     //       3. Build ring of workers
@@ -113,6 +124,8 @@ public class coordinatorImpl extends CoordinatorPOA {
 
   @Override
   public void kill(String whom) {
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+        "coordinatorImpl", "kill", "");
     try {
       org.omg.CORBA.Object ref = main_starter.main_starter.get_naming_context().resolve_str(whom);
       Starter sel = StarterHelper.narrow(ref);
@@ -124,6 +137,8 @@ public class coordinatorImpl extends CoordinatorPOA {
 
   @Override
   public void terminate() {
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+        "coordinatorImpl", "terminate", "");
     // Kill all starters
     for (String s : getStarter()) {
       kill(s);

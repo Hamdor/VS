@@ -1,2 +1,2 @@
 #!/bin/bash
-java -cp coordinator/bin/:. main_starter.main_starter
+java -cp coordinator/bin/:. main_starter.main_starter --monitor=$1 --name=$2 -ORBInitialPort 2000 -ORBInitialHost localhost

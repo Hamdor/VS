@@ -211,18 +211,18 @@ final String shell_header = " ____    __              ___    ___      \n" +
         }
         System.out.println(str);
       } else if(input.m_code == console_code.KILL) {
-    	m_coordinator.terminate();
+    	  m_coordinator.terminate();
       } else if(input.m_code == console_code.KILLS) {
-    	m_coordinator.kill(input.m_opt[0]); // Kill starter
+    	  m_coordinator.kill(input.m_opt[0]); // Kill starter
       } else if(input.m_code == console_code.CALCULATE) {
         // Start new calculation
         m_coordinator.calculate(input.m_opt[0],   // Monitor
-             Integer.getInteger(input.m_opt[1]),  // ggT Lower
-             Integer.getInteger(input.m_opt[2]),  // ggT Upper
-             Integer.getInteger(input.m_opt[3]),  // delay Lower
-             Integer.getInteger(input.m_opt[4]),  // delay Upper
-             Integer.getInteger(input.m_opt[5]),  // perid
-             Integer.getInteger(input.m_opt[6])); // expected ggT
+             Integer.valueOf(input.m_opt[1]),  // ggT Lower
+             Integer.valueOf(input.m_opt[2]),  // ggT Upper
+             Integer.valueOf(input.m_opt[3]),  // delay Lower
+             Integer.valueOf(input.m_opt[4]),  // delay Upper
+             Integer.valueOf(input.m_opt[5]),  // perid
+             Integer.valueOf(input.m_opt[6])); // expected ggT
       } else if(input.m_code == console_code.EXIT) {
         // Exit while loop
         break;

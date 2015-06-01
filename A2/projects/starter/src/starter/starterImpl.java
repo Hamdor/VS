@@ -14,7 +14,6 @@ import org.omg.CosNaming.NamingContextPackage.NotFound;
 
 import worker.Worker;
 import worker.WorkerHelper;
-import coordinator.CoordinatorHelper;
 
 public class starterImpl extends StarterPOA {
 
@@ -23,6 +22,7 @@ public class starterImpl extends StarterPOA {
 
   private ArrayList<String> m_worker_names;
 
+  private static final String absolute_classpath = ""; // TODO
   private static final String cmdworker = "java -cp worker/bin/:. main_starter.main_starter";
 
   public starterImpl(final String name) {
@@ -41,6 +41,9 @@ public class starterImpl extends StarterPOA {
 
   @Override
   public void startWorker(int number) {
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+                                           "starterImpl", "startWorker",
+                                           "number: " + number + " (TRACE)");
     Runtime r = Runtime.getRuntime();
     // Get name of an interface (usually the first one)
     String ifname = "";
@@ -75,6 +78,8 @@ public class starterImpl extends StarterPOA {
 
   @Override
   public void kill() {
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+                                           "coordinatorImpl", "kill", "");
     // Kill all our workers...
     NamingContextExt nc = main_starter.main_starter.get_naming_context();
     org.omg.CORBA.Object obj = null;

@@ -1,2 +1,2 @@
 #!/bin/bash
-java -cp client/bin/:. main_starter.main_starter
+java -cp client/bin/:. main_starter.main_starter --coordinator=coordi -ORBInitialPort 2000 -ORBInitialHost localhost
