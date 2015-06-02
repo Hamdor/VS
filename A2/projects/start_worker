@@ -1,2 +1,2 @@
 #!/bin/bash
-java -cp worker/bin/:. main_starter.main_starter
+java -cp /Users/Hamdor/gitrepos/VS/A2/projects/worker/bin/:. main_starter.main_starter $1 $2 $3 $4 $5

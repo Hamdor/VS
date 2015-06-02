@@ -8,6 +8,8 @@ import java.util.concurrent.Semaphore;
 import main_starter.log_level;
 import monitor.Monitor;
 
+import org.omg.CosNaming.NamingContextExt;
+import org.omg.CosNaming.NamingContextExtHelper;
 import org.omg.CosNaming.NamingContextPackage.CannotProceed;
 import org.omg.CosNaming.NamingContextPackage.InvalidName;
 import org.omg.CosNaming.NamingContextPackage.NotFound;
@@ -107,8 +109,30 @@ public class coordinatorImpl extends CoordinatorPOA {
     //       6. Call `berechnen` on worker
     //       7. Kick off calculation
     // ------------------------------
-    final int num = 5;            // TODO: 1. Roll number of workers to start
-    m_wait = new Semaphore(-num); // 2. Wait for workers
+    final int num = 5;            // TODO: 1. Roll number of workers to start * known starters
+    // TODO: we have to start the same amount of workers on very starter
+    m_wait = new Semaphore(-(num * m_registry.keySet().size())+1); // 2. Wait for workers
+
+    final NamingContextExt nc = main_starter.main_starter.get_naming_context();
+    for (String starter_name : m_registry.keySet()) {
+      try {
+        org.omg.CORBA.Object obj = nc.resolve_str(starter_name);
+        Starter starterObj = StarterHelper.narrow(obj);
+        starterObj.startWorker(num);
+      } catch (NotFound | CannotProceed | InvalidName e) {
+        e.printStackTrace();
+      }
+    }
+    // Block until all
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+        "coordinatorImpl", "calculate", "Before m_wait.aquire() (TRACE)");
+    try {
+      m_wait.acquire();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+        "coordinatorImpl", "calculate", "After m_wait.aquire() (TRACE)");
     // TODO: 3. Build ring of workers (We need the new ids...)
     // Call ring on monitor
     String[] s;

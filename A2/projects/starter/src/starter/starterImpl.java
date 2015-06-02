@@ -22,8 +22,8 @@ public class starterImpl extends StarterPOA {
 
   private ArrayList<String> m_worker_names;
 
-  private static final String absolute_classpath = ""; // TODO
-  private static final String cmdworker = "java -cp worker/bin/:. main_starter.main_starter";
+  private static final String fullcp = "/Users/Hamdor/gitrepos/VS/A2/projects/worker/bin/";
+  private static final String cmdworker = "java -cp " + fullcp + ":. main_starter.main_starter";
 
   public starterImpl(final String name) {
     m_name = name;
@@ -45,27 +45,18 @@ public class starterImpl extends StarterPOA {
                                            "starterImpl", "startWorker",
                                            "number: " + number + " (TRACE)");
     Runtime r = Runtime.getRuntime();
-    // Get name of an interface (usually the first one)
-    String ifname = "";
-    try {
-      Enumeration<NetworkInterface> nis = NetworkInterface.getNetworkInterfaces();
-      if (nis.hasMoreElements()) {
-        ifname = nis.nextElement().getDisplayName();
-      } else {
-        System.out.println("ERROR: Could not read interface names...");
-        return;
-      }
-    } catch (SocketException e1) {
-      e1.printStackTrace();
-    }
     // Start workers...
     while(number-- > 0) {
       try {
-        String unique_name = ifname + "-" + m_name + "-" + number;
+        String unique_name = m_name + "-" + number;
         String arguments = "--name=" + unique_name
             + " --starter=" + m_name
-            + "--coordinator=" + main_starter.main_starter.get_coordinator_name();
+            + " --coordinator=" + main_starter.main_starter.get_coordinator_name()
+            + " -ORBInitialPort 2000 " + " -ORBInitialHost localhost";
         r.exec(cmdworker + " " + arguments);
+        main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+                                               "starterImpl", "startWorker",
+                                               "started: " + number + " (TRACE)");
         // TODO: Its not possible to remove names from this list
         //       maybe we have to expand the idl files to support
         //       unregister operations...

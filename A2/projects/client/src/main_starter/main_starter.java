@@ -131,8 +131,10 @@ public class main_starter {
   };
 
   final String[] descr = {
-   "Show commands", "kill the coordinator", "kill a starter",
-   "start a new calculation", "exit this shell"
+   "Show commands", "kill the coordinator {arg: coordinator name}",
+   "kill a starter {arg: starter name}",
+   "start a new calculation {args: monitor, ggT lower, ggT upper,"
+   + " delay lower, delay upper, period, expected ggT", "exit this shell"
   };
 
   private console_input parse(final String input) {
@@ -185,13 +187,13 @@ public class main_starter {
     return result;
   }
 
-final String shell_header = " ____    __              ___    ___      \n" +
-  "/\\  _`\\ /\\ \\            /\\_ \\  /\\_ \\     \n" +
-  "\\ \\,\\L\\_\\ \\ \\___      __\\//\\ \\ \\//\\ \\    \n" +
-  " \\/_\\__ \\\\ \\  _ `\\  /'__`\\\\ \\ \\  \\ \\ \\   \n" +
-  "   /\\ \\L\\ \\ \\ \\ \\ \\/\\  __/ \\_\\ \\_ \\_\\ \\_ \n" +
-  "   \\ `\\____\\ \\_\\ \\_\\ \\____\\/\\____\\/\\____\\\n" +
-  "    \\/_____/\\/_/\\/_/\\/____/\\/____/\\/____/\n";
+  final String shell_header = " ____    __              ___    ___      \n" +
+    "/\\  _`\\ /\\ \\            /\\_ \\  /\\_ \\     \n" +
+    "\\ \\,\\L\\_\\ \\ \\___      __\\//\\ \\ \\//\\ \\    \n" +
+    " \\/_\\__ \\\\ \\  _ `\\  /'__`\\\\ \\ \\  \\ \\ \\   \n" +
+    "   /\\ \\L\\ \\ \\ \\ \\ \\/\\  __/ \\_\\ \\_ \\_\\ \\_ \n" +
+    "   \\ `\\____\\ \\_\\ \\_\\ \\____\\/\\____\\/\\____\\\n" +
+    "    \\/_____/\\/_/\\/_/\\/____/\\/____/\\/____/\n";
 
   private void run() {
     if (System.console() == null) {
