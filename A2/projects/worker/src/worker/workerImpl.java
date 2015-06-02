@@ -3,6 +3,9 @@ package worker;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 
+import monitor.Monitor;
+import monitor.MonitorHelper;
+
 import org.omg.CosNaming.NamingContextExt;
 import org.omg.CosNaming.NamingContextPackage.CannotProceed;
 import org.omg.CosNaming.NamingContextPackage.InvalidName;
@@ -21,7 +24,7 @@ public class workerImpl extends WorkerPOA {
   private boolean m_left = false;
   private boolean m_right = false;
   private String  m_snapshot_sender = "";
-  private String  m_monitor_name = "";
+  private Monitor m_monitor = null;
   private Worker  m_leftneighbor = null; // reference to our neighbors
   private Worker  m_rightneighbor = null;
 
@@ -131,9 +134,15 @@ public class workerImpl extends WorkerPOA {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    m_monitor_name = monitor;
-    m_thread = new Thread(worker_runnable);
-    m_thread.start();
+    // Get reference to monitor
+    try {
+      org.omg.CORBA.Object obj = main_starter.main_starter.get_naming_context()
+          .resolve_str(monitor);
+
+      m_monitor = MonitorHelper.narrow(obj);
+    } catch (NotFound | CannotProceed | InvalidName e) {
+      e.printStackTrace();
+    }
     main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
         "workerImpl", "init",
         "exit function... (TRACE)");
@@ -149,6 +158,7 @@ public class workerImpl extends WorkerPOA {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+    m_monitor.rechnen(m_name, sender, value);
     main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
         "workerImpl", "shareResult",
         "exit function... (TRACE)");
@@ -186,5 +196,13 @@ public class workerImpl extends WorkerPOA {
   @Override
   public String getName() {
     return m_name;
+  }
+
+  @Override
+  public void start() {
+    if (m_thread == null) {
+      m_thread = new Thread(worker_runnable);
+      m_thread.start();
+    }
   }
 }

@@ -34,5 +34,11 @@ module worker {
      * @returns the name of the worker as string
      */
      string getName();
+
+    /**
+     * Actually start the underlying thread
+     * if the thread is already started, this is a nop
+     */
+     void start();
   };
 };

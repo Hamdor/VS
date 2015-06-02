@@ -189,6 +189,10 @@ public class coordinatorImpl extends CoordinatorPOA {
     }
     // Call `startzahlen` on monitor
     main_starter.main_starter.get_monitor().startzahlen(start_values);
+    // Start underlying threads at worker process
+    for (Worker w : workers) {
+      w.start();
+    }
   }
 
   /**
