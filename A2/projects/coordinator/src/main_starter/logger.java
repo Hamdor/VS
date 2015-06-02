@@ -1,6 +1,9 @@
 package main_starter;
 
 public class logger {
+  private logger() {
+    // nop
+  }
   private static logger s_instance = new logger();
 
   public static logger get_instance() {

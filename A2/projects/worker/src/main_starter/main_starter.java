@@ -40,6 +40,8 @@ public class main_starter {
   private Coordinator m_coordinator = null;
   private Starter m_starter = null;
 
+  public static String m_name = "";
+
   private static void print_help_message() {
     StringBuilder str = new StringBuilder();
     str.append("Usage: java -cp . starter [Options...]\n");
@@ -83,6 +85,7 @@ public class main_starter {
       s_nameingcontext.rebind(m_path, href);
       // Register at coordinator
       m_coordinator.register(worker_name, starter_name);
+      m_name = worker_name;
     } catch (Exception e) {
       e.printStackTrace();
       init = false;

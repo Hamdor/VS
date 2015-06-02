@@ -1,7 +1,7 @@
 package worker;
 
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.SynchronousQueue;
 
 import org.omg.CosNaming.NamingContextExt;
 import org.omg.CosNaming.NamingContextPackage.CannotProceed;
@@ -11,7 +11,7 @@ import org.omg.CosNaming.NamingContextPackage.NotFound;
 public class workerImpl extends WorkerPOA {
   private String m_name;
   private Thread m_thread;
-  private SynchronousQueue<Job> m_jobs;
+  private LinkedBlockingQueue<Job> m_jobs;
   private volatile boolean run = true;
   private Semaphore m_sema;
 
@@ -26,8 +26,11 @@ public class workerImpl extends WorkerPOA {
   private Worker  m_rightneighbor = null;
 
   public workerImpl(final String name) {
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "workerImpl",
+        "name: " + name + " (TRACE)");
     m_name = name;
-    m_jobs = new SynchronousQueue<Job>();
+    m_jobs = new LinkedBlockingQueue<Job>();
     m_thread = new Thread(new Runnable() {
       @Override
       public void run() {
@@ -91,17 +94,26 @@ public class workerImpl extends WorkerPOA {
   }
 
   public void run() {
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "run", "");
     try {
       m_sema.acquire();
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "run",
+        "exit function... (TRACE)");
   }
 
   // TODO: how to handle the delay ?
   @Override
   public void init(String left, String right, int value, int delay,
       String monitor) {
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "init",
+        "left: " + left + " right: " + right + " value: " + value + " delay: " +
+        delay + " monitor: " + monitor + " (TRACE)");
     m_left_name  = left;
     m_right_name = right;
     try {
@@ -110,27 +122,38 @@ public class workerImpl extends WorkerPOA {
       e.printStackTrace();
     }
     m_monitor_name = monitor;
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "init",
+        "exit function... (TRACE)");
   }
 
-  
   @Override
   public void shareResult(String sender, int value) {
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "shareResult",
+        "sender: " + sender + " value: " + value + " (TRACE)");
     try {
       m_jobs.put(new Job(value, false, sender));
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "shareResult",
+        "exit function... (TRACE)");
   }
 
   @Override
   public void kill() {
-    // TODO: What has to be done here for a clean shutdown?
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "kill", "");
     run = false;
     m_sema.release();
   }
 
   @Override
   public void snapshot(String sender) {
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "snapshot", "sender: " + sender + " (TRACE)");
     // TODO: Identifie if sender is coordinator
     //       if the sender is the coordinator,
     //       the worker has to send the maker
@@ -143,6 +166,9 @@ public class workerImpl extends WorkerPOA {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "snapshot", "exit function... (TRACE)");
   }
 
   @Override
