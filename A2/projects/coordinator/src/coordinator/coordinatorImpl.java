@@ -4,13 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Semaphore;
 
-import main_starter.log_level;
-import monitor.Monitor;
-
 import org.omg.CosNaming.NamingContextExt;
-import org.omg.CosNaming.NamingContextExtHelper;
 import org.omg.CosNaming.NamingContextPackage.CannotProceed;
 import org.omg.CosNaming.NamingContextPackage.InvalidName;
 import org.omg.CosNaming.NamingContextPackage.NotFound;
@@ -27,6 +25,30 @@ public class coordinatorImpl extends CoordinatorPOA {
   private Semaphore m_sema;
   private Semaphore m_wait = null;
   private ArrayList<String> m_newworker;
+
+  // This task will kick off the snapshot
+  private final TimerTask m_ts = new TimerTask() {
+    @Override
+    public void run() {
+      synchronized (m_registry) {
+        if (m_registry.isEmpty()) {
+          return;
+        }
+        String kickoff_at = m_registry.get(
+            m_registry.keySet().iterator().next()).get(0);
+        try {
+          org.omg.CORBA.Object obj = main_starter.main_starter
+              .get_naming_context().resolve_str(kickoff_at);
+          Worker w = WorkerHelper.narrow(obj);
+          w.snapshot(m_name);
+        } catch (NotFound | CannotProceed | InvalidName e) {
+          e.printStackTrace();
+        }
+      }
+    }
+  };
+
+  private Timer m_timer = null;
 
   public coordinatorImpl(final String name) {
     m_name = name;
@@ -104,26 +126,18 @@ public class coordinatorImpl extends CoordinatorPOA {
       int delayLower, int delayUpper, int period, int expectedggT) {
     main_starter.logger.get_instance().log(main_starter.log_level.INFO,
         "coordinatorImpl", "calculate", "");
-    // TODO: 1. Start workers
-    //       2. Wait for workers
-    //       2. Call `ring` on monitor
-    //       4. Build ring of workers
-    //       5. Get random start values for calculation
-    //       6. Call `berechnen` on worker
-    //       7. Kick off calculation
-    // ------------------------------
-    final int num = 3;            // TODO: 1. Roll number of workers to start * known starters
-    // TODO: we have to start the same amount of workers on very starter
-    m_wait = new Semaphore(-(num * m_registry.keySet().size())+1); // 2. Wait for workers
-
     final NamingContextExt nc = main_starter.main_starter.get_naming_context();
-    for (String starter_name : m_registry.keySet()) {
-      try {
-        org.omg.CORBA.Object obj = nc.resolve_str(starter_name);
-        Starter starterObj = StarterHelper.narrow(obj);
-        starterObj.startWorker(num);
-      } catch (NotFound | CannotProceed | InvalidName e) {
-        e.printStackTrace();
+    synchronized(m_registry) {
+      final int num = randInt(ggTLower, ggTUpper) * m_registry.keySet().size();
+      m_wait = new Semaphore(-(num * m_registry.keySet().size())+1);
+      for (String starter_name : m_registry.keySet()) {
+        try {
+          org.omg.CORBA.Object obj = nc.resolve_str(starter_name);
+          Starter starterObj = StarterHelper.narrow(obj);
+          starterObj.startWorker(num);
+        } catch (NotFound | CannotProceed | InvalidName e) {
+          e.printStackTrace();
+        }
       }
     }
     // Block until all
@@ -137,7 +151,7 @@ public class coordinatorImpl extends CoordinatorPOA {
     main_starter.logger.get_instance().log(main_starter.log_level.INFO,
         "coordinatorImpl", "calculate", "After m_wait.aquire() (TRACE)"); 
     // Call ring on monitor
-    String[] s;
+    String[] s = null;
     synchronized(m_newworker) {
       s = new String[m_newworker.size()];
       m_newworker.toArray(s);
@@ -163,7 +177,7 @@ public class coordinatorImpl extends CoordinatorPOA {
     // Actually build ring, based on reference array
     // TODO: Better logic to support also 1 or 2 worker rings...
     int[] start_values = new int[workers.length];
-    if (workers.length % 3 == 0) {
+    if (workers.length >= 3) {
       main_starter.logger.get_instance().log(main_starter.log_level.INFO,
           "coordinatorImpl", "calculate", "Build ring... (mod 3 OK) (TRACE)");
       int idx_left   = workers.length-1;
@@ -184,8 +198,26 @@ public class coordinatorImpl extends CoordinatorPOA {
             random_start_val, delay, monitor_name);
       }
     } else {
-      main_starter.logger.get_instance().log(main_starter.log_level.ERROR,
-          "coordinatorImpl", "calculate", "Invalid count of workers (mod 3 NOT OK)");
+      if (workers.length == 2) {
+        // Just start 2 workers...
+        main_starter.logger.get_instance().log(main_starter.log_level.WARNING,
+            "coordinatorImpl", "calculate", "Build ring... (ONLY 2 WORKER)");
+        int random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
+        start_values[0] = random_start_val;
+        int delay = 400; // TODO: ... What has to be done here?
+        workers[0].init(workers[0].getName(), workers[1].getName(),
+            random_start_val, delay, main_starter.main_starter.get_monitor_string());
+        random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
+        start_values[1] = random_start_val;
+        delay = 400; // TODO: ... What has to be done here?
+        workers[1].init(workers[1].getName(), workers[0].getName(),
+            random_start_val, delay, main_starter.main_starter.get_monitor_string());
+      } else {
+        // only 1 worker...
+        main_starter.logger.get_instance().log(main_starter.log_level.ERROR,
+            "coordinatorImpl", "calculate", "Build ring... (ONLY 1 WORKER) ==> return");
+        return;
+      }
     }
     // Call `startzahlen` on monitor
     main_starter.main_starter.get_monitor().startzahlen(start_values);
@@ -193,6 +225,9 @@ public class coordinatorImpl extends CoordinatorPOA {
     for (Worker w : workers) {
       w.start();
     }
+    // Start snapshot timer...
+    m_timer = new Timer();
+    m_timer.scheduleAtFixedRate(m_ts, period, period);
   }
 
   /**
@@ -229,6 +264,9 @@ public class coordinatorImpl extends CoordinatorPOA {
       sel.kill();
     } catch (NotFound | CannotProceed | InvalidName e) {
       e.printStackTrace();
+    }
+    synchronized(m_registry) {
+      m_registry.remove(whom);
     }
   }
 

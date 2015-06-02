@@ -11,6 +11,9 @@ import org.omg.CosNaming.NamingContextPackage.CannotProceed;
 import org.omg.CosNaming.NamingContextPackage.InvalidName;
 import org.omg.CosNaming.NamingContextPackage.NotFound;
 
+import coordinator.Coordinator;
+import coordinator.CoordinatorHelper;
+
 public class workerImpl extends WorkerPOA {
   private String m_name;
   private Thread m_thread;
@@ -23,6 +26,8 @@ public class workerImpl extends WorkerPOA {
   private String  m_right_name = "";
   private boolean m_left = false;
   private boolean m_right = false;
+  private int     m_left_val = 0;
+  private int     m_right_val = 0;
   private String  m_snapshot_sender = "";
   private Monitor m_monitor = null;
   private Worker  m_leftneighbor = null; // reference to our neighbors
@@ -46,11 +51,24 @@ public class workerImpl extends WorkerPOA {
             "workerImpl", "run",
             "while(run) loop (TRACE)");
         if (m_left && m_right) {
+          main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+              "workerImpl", "run",
+              "m_snapshot_sender: " + m_snapshot_sender + " m_left_name: " + m_left_name + " m_right_name: " + m_right_name);
+          if (m_snapshot_sender == m_left_name || m_snapshot_sender == m_right_name) {
+            m_left = false;
+            m_right = false;
+            continue;
+          }
           try {
-            obj = nc.resolve_str(m_snapshot_sender);
+            /*obj = nc.resolve_str(m_snapshot_sender);
             Worker sender = WorkerHelper.narrow(obj);
             //int seqnum = 0; // TODO: find out where to get that from
-            sender.snapshot(m_name);
+            sender.snapshot(m_name);*/
+            obj = nc.resolve_str(m_snapshot_sender);
+            Coordinator sender = CoordinatorHelper.narrow(obj);
+            // TODO: Replace 0 with seq number
+            sender.inform(m_name, 0, m_left_val == m_right_val &&
+                m_left_val == m_currentValue, m_currentValue);
           } catch (NotFound | CannotProceed | InvalidName e) {
             e.printStackTrace();
           }
@@ -70,10 +88,20 @@ public class workerImpl extends WorkerPOA {
         if (current_job.marker()) {
           if (current_job.sender() == m_left_name) {
             m_left = true;
+            m_left_val = current_job.value();
           } else if (current_job.sender() == m_right_name) {
             m_right = true;
+            m_right_val = current_job.value();
           } else {
-            System.out.println("[ERROR]: Unexpected name in marker message: " + current_job.sender());
+            // Sender was coordinator ...
+          }
+          if (!m_left) {
+            // Send marker to left
+            send_marker(m_left_name);
+          }
+          if (!m_right) {
+            // Send marker to right
+            send_marker(m_right_name);
           }
         } else {
           if (current_job.value() > 0) {
@@ -95,6 +123,17 @@ public class workerImpl extends WorkerPOA {
       }
     }
   };
+
+  private void send_marker(final String name) {
+    NamingContextExt nc = main_starter.main_starter.get_naming_context();
+    try {
+      org.omg.CORBA.Object obj = nc.resolve_str(m_right_name);
+      Worker sender = WorkerHelper.narrow(obj);
+      sender.snapshot(m_name);
+    } catch (NotFound | CannotProceed | InvalidName e) {
+      e.printStackTrace();
+    }
+  }
 
   public workerImpl(final String name) {
     main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
