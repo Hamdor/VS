@@ -2,6 +2,7 @@ package coordinator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Semaphore;
 
@@ -161,6 +162,7 @@ public class coordinatorImpl extends CoordinatorPOA {
     }
     // Actually build ring, based on reference array
     // TODO: Better logic to support also 1 or 2 worker rings...
+    int[] start_values = new int[workers.length];
     if (workers.length % 3 == 0) {
       main_starter.logger.get_instance().log(main_starter.log_level.INFO,
           "coordinatorImpl", "calculate", "Build ring... (mod 3 OK) (TRACE)");
@@ -175,9 +177,8 @@ public class coordinatorImpl extends CoordinatorPOA {
           , idx_right = ++idx_right % workers.length) {
         left_obj  = workers[idx_left];
         right_obj = workers[idx_right];
-        int random_start_val = 42; // TODO: Random start value for calculation
-        // TODO: Store random start values into array and send it to monitor...
-        //       via `startzahlen`
+        final int random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
+        start_values[idx_middle] = random_start_val;
         int delay = 400; // TODO: ... What has to be done here?
         workers[idx_middle].init(left_obj.getName(), right_obj.getName(),
             random_start_val, delay, monitor_name);
@@ -186,6 +187,32 @@ public class coordinatorImpl extends CoordinatorPOA {
       main_starter.logger.get_instance().log(main_starter.log_level.ERROR,
           "coordinatorImpl", "calculate", "Invalid count of workers (mod 3 NOT OK)");
     }
+    // Call `startzahlen` on monitor
+    main_starter.main_starter.get_monitor().startzahlen(start_values);
+  }
+
+  /**
+   * Returns a pseudo-random number between min and max, inclusive.
+   * The difference between min and max can be at most
+   * <code>Integer.MAX_VALUE - 1</code>.
+   *
+   * @param min Minimum value
+   * @param max Maximum value.  Must be greater than min.
+   * @return Integer between min and max, inclusive.
+   * @see java.util.Random#nextInt(int)
+   * @see http://stackoverflow.com/questions/363681/generating-random-integers-in-a-range-with-java
+   */
+  public static int randInt(int min, int max) {
+
+      // NOTE: Usually this should be a field rather than a method
+      // variable so that it is not re-seeded every call.
+      Random rand = new Random();
+
+      // nextInt is normally exclusive of the top value,
+      // so add 1 to make it inclusive
+      int randomNum = rand.nextInt((max - min) + 1) + min;
+
+      return randomNum;
   }
 
   @Override
