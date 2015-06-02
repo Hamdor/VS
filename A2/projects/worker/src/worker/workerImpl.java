@@ -25,72 +25,82 @@ public class workerImpl extends WorkerPOA {
   private Worker  m_leftneighbor = null; // reference to our neighbors
   private Worker  m_rightneighbor = null;
 
+  private Runnable worker_runnable = new Runnable(){
+    @Override
+    public void run() {
+      NamingContextExt nc = main_starter.main_starter.get_naming_context();
+      org.omg.CORBA.Object obj;
+      try {
+        obj = nc.resolve_str(m_left_name);
+        m_leftneighbor = WorkerHelper.narrow(obj);
+        obj = nc.resolve_str(m_right_name);
+        m_rightneighbor = WorkerHelper.narrow(obj);
+      } catch (NotFound | CannotProceed | InvalidName e1) {
+        e1.printStackTrace();
+      }
+      while (run) {
+        main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+            "workerImpl", "run",
+            "while(run) loop (TRACE)");
+        if (m_left && m_right) {
+          try {
+            obj = nc.resolve_str(m_snapshot_sender);
+            Worker sender = WorkerHelper.narrow(obj);
+            //int seqnum = 0; // TODO: find out where to get that from
+            sender.snapshot(m_name);
+          } catch (NotFound | CannotProceed | InvalidName e) {
+            e.printStackTrace();
+          }
+        }
+        Job current_job = null;
+        main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+            "workerImpl", "run",
+            "before m_jobs.take() (TRACE)");
+        try {
+          current_job = m_jobs.take();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+            "workerImpl", "run",
+            "after m_jobs.take() (TRACE)");
+        if (current_job.marker()) {
+          if (current_job.sender() == m_left_name) {
+            m_left = true;
+          } else if (current_job.sender() == m_right_name) {
+            m_right = true;
+          } else {
+            System.out.println("[ERROR]: Unexpected name in marker message: " + current_job.sender());
+          }
+        } else {
+          if (current_job.value() > 0) {
+            if (m_currentValue == 0) {
+              m_currentValue = current_job.value(); // getting the first value
+                                                    // doing it this way means we can only ever use a worker for one run of calculations
+              // send the first round of messages to the neighbors
+              m_leftneighbor.shareResult(m_name, m_currentValue);
+              m_rightneighbor.shareResult(m_name, m_currentValue);
+            } else {
+              if (current_job.value() < m_currentValue) {
+                m_currentValue = ((m_currentValue - 1) % current_job.value()) + 1;
+                m_leftneighbor.shareResult(m_name, m_currentValue);
+                m_rightneighbor.shareResult(m_name, m_currentValue);
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+
   public workerImpl(final String name) {
     main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
         "workerImpl", "workerImpl",
         "name: " + name + " (TRACE)");
     m_name = name;
     m_jobs = new LinkedBlockingQueue<Job>();
-    m_thread = new Thread(new Runnable() {
-      @Override
-      public void run() {
-        NamingContextExt nc = main_starter.main_starter.get_naming_context();
-        org.omg.CORBA.Object obj;
-        try {
-          obj = nc.resolve_str(m_left_name);
-          m_leftneighbor = WorkerHelper.narrow(obj);
-          obj = nc.resolve_str(m_right_name);
-          m_rightneighbor = WorkerHelper.narrow(obj);
-        } catch (NotFound | CannotProceed | InvalidName e1) {
-          e1.printStackTrace();
-        }
-        while (run) {
-          if (m_left && m_right) {
-            try {
-              obj = nc.resolve_str(m_snapshot_sender);
-              Worker sender = WorkerHelper.narrow(obj);
-              //int seqnum = 0; // TODO: find out where to get that from
-              sender.snapshot(m_name);
-            } catch (NotFound | CannotProceed | InvalidName e) {
-              e.printStackTrace();
-            }
-          }
-          Job current_job = null;
-          try {
-            current_job = m_jobs.take();
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-          if (current_job.marker()) {
-            if (current_job.sender() == m_left_name) {
-              m_left = true;
-            } else if (current_job.sender() == m_right_name) {
-              m_right = true;
-            } else {
-              System.out.println("[ERROR]: Unexpected name in marker message: " + current_job.sender());
-            }
-          } else {
-            if (current_job.value() > 0) {
-              if (m_currentValue == 0) {
-                m_currentValue = current_job.value(); // getting the first value
-                                                      // doing it this way means we can only ever use a worker for one run of calculations
-                // send the first round of messages to the neighbors
-                m_leftneighbor.shareResult(m_name, m_currentValue);
-                m_rightneighbor.shareResult(m_name, m_currentValue);
-              } else {
-                if (current_job.value() < m_currentValue) {
-                  m_currentValue = ((m_currentValue - 1) % current_job.value()) + 1;
-                  m_leftneighbor.shareResult(m_name, m_currentValue);
-                  m_rightneighbor.shareResult(m_name, m_currentValue);
-                }
-              }
-            }
-          }
-        }
-      }
-    });
+    m_thread = null;
     m_sema = new Semaphore(0);
-    m_thread.start();
   }
 
   public void run() {
@@ -117,11 +127,13 @@ public class workerImpl extends WorkerPOA {
     m_left_name  = left;
     m_right_name = right;
     try {
-      m_jobs.put(new Job(value, false,monitor));
+      m_jobs.put(new Job(value, false, monitor));
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
     m_monitor_name = monitor;
+    m_thread = new Thread(worker_runnable);
+    m_thread.start();
     main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
         "workerImpl", "init",
         "exit function... (TRACE)");
