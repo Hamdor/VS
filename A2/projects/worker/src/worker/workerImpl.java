@@ -144,4 +144,9 @@ public class workerImpl extends WorkerPOA {
       e.printStackTrace();
     }
   }
+
+  @Override
+  public String getName() {
+    return m_name;
+  }
 }

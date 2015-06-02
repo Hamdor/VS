@@ -24,6 +24,7 @@ public class main_starter {
 
   private static NamingContextExt s_namingcontext = null;
   private static Monitor s_monitor = null;
+  private static String s_monitor_str = null;
 
   /**
    * Can be used from other parts of the program to get the
@@ -39,6 +40,14 @@ public class main_starter {
    */
   public static final Monitor get_monitor() {
     return s_monitor;
+  }
+
+  /**
+   * Can be used from other parts of the program to get a
+   * string of the monitor name
+   */
+  public static final String get_monitor_string() {
+    return s_monitor_str;
   }
 
   private ORB m_orb = null;
@@ -81,6 +90,7 @@ public class main_starter {
       // Get reference to monitor
       org.omg.CORBA.Object obj = s_namingcontext.resolve_str(monitor);
       s_monitor = MonitorHelper.narrow(obj);
+      s_monitor_str = monitor;
     } catch (Exception e) {
       e.printStackTrace();
       init = false;

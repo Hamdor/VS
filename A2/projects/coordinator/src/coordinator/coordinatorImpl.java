@@ -16,6 +16,8 @@ import org.omg.CosNaming.NamingContextPackage.NotFound;
 
 import starter.Starter;
 import starter.StarterHelper;
+import worker.Worker;
+import worker.WorkerHelper;
 
 public class coordinatorImpl extends CoordinatorPOA {
 
@@ -102,14 +104,14 @@ public class coordinatorImpl extends CoordinatorPOA {
     main_starter.logger.get_instance().log(main_starter.log_level.INFO,
         "coordinatorImpl", "calculate", "");
     // TODO: 1. Start workers
-    //       2. Wait for workers (how...?)
-    //       3. Build ring of workers
-    //       4. Call `ring` on monitor
+    //       2. Wait for workers
+    //       2. Call `ring` on monitor
+    //       4. Build ring of workers
     //       5. Get random start values for calculation
     //       6. Call `berechnen` on worker
     //       7. Kick off calculation
     // ------------------------------
-    final int num = 5;            // TODO: 1. Roll number of workers to start * known starters
+    final int num = 3;            // TODO: 1. Roll number of workers to start * known starters
     // TODO: we have to start the same amount of workers on very starter
     m_wait = new Semaphore(-(num * m_registry.keySet().size())+1); // 2. Wait for workers
 
@@ -132,8 +134,7 @@ public class coordinatorImpl extends CoordinatorPOA {
       e.printStackTrace();
     }
     main_starter.logger.get_instance().log(main_starter.log_level.INFO,
-        "coordinatorImpl", "calculate", "After m_wait.aquire() (TRACE)");
-    // TODO: 3. Build ring of workers (We need the new ids...)
+        "coordinatorImpl", "calculate", "After m_wait.aquire() (TRACE)"); 
     // Call ring on monitor
     String[] s;
     synchronized(m_newworker) {
@@ -141,9 +142,50 @@ public class coordinatorImpl extends CoordinatorPOA {
       m_newworker.toArray(s);
     }
     main_starter.main_starter.get_monitor().ring(s);
-    // TODO: 5. Generate random start values
-    // TODO: 6. Call berechnen on monitor
-    // TOOD: 7. Kick off calculation
+    // Get reference to all workers and store them into array
+    // later we can build the ring, based on this array
+    Worker[] workers = null;
+    synchronized(m_newworker) {
+      workers = new Worker[m_newworker.size()];
+      int idx = 0;
+      for (String wid : m_newworker) {
+        try {
+          org.omg.CORBA.Object obj = nc.resolve_str(wid);
+          workers[idx++] = WorkerHelper.narrow(obj);
+
+        } catch (NotFound | CannotProceed | InvalidName e) {
+          e.printStackTrace();
+        }
+      }
+      m_newworker.clear();
+    }
+    // Actually build ring, based on reference array
+    // TODO: Better logic to support also 1 or 2 worker rings...
+    if (workers.length % 3 == 0) {
+      main_starter.logger.get_instance().log(main_starter.log_level.INFO,
+          "coordinatorImpl", "calculate", "Build ring... (mod 3 OK) (TRACE)");
+      int idx_left   = workers.length-1;
+      int idx_middle = 0;
+      int idx_right  = 1;
+      Worker left_obj  = null;
+      Worker right_obj = null;
+      String monitor_name = main_starter.main_starter.get_monitor_string();
+      for (; idx_middle < workers.length; ++idx_middle
+          , idx_left  = ++idx_left % workers.length
+          , idx_right = ++idx_right % workers.length) {
+        left_obj  = workers[idx_left];
+        right_obj = workers[idx_right];
+        int random_start_val = 42; // TODO: Random start value for calculation
+        // TODO: Store random start values into array and send it to monitor...
+        //       via `startzahlen`
+        int delay = 400; // TODO: ... What has to be done here?
+        workers[idx_middle].init(left_obj.getName(), right_obj.getName(),
+            random_start_val, delay, monitor_name);
+      }
+    } else {
+      main_starter.logger.get_instance().log(main_starter.log_level.ERROR,
+          "coordinatorImpl", "calculate", "Invalid count of workers (mod 3 NOT OK)");
+    }
   }
 
   @Override

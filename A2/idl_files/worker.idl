@@ -29,5 +29,10 @@ module worker {
      * Kill the ggT Prozess (Worker)
      */
     void kill();
+
+    /**
+     * @returns the name of the worker as string
+     */
+     string getName();
   };
 };
