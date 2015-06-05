@@ -33,11 +33,20 @@ public class main_starter {
     return s_nameingcontext;
   }
 
+  private static Coordinator s_coordinator = null;
+
+  /**
+   * Can be used from other parts of the program to get the
+   * Coordinator reference.
+   */
+  public static final Coordinator get_coordinator() {
+    return s_coordinator;
+  }
+
   private ORB m_orb = null;
   private POA m_rootpoa = null;
   private workerImpl m_obj = null;
   private NameComponent[] m_path = null;
-  private Coordinator m_coordinator = null;
   private Starter m_starter = null;
 
   public static String m_name = "";
@@ -75,7 +84,7 @@ public class main_starter {
       m_starter = StarterHelper.narrow(obj);
       // Get reference to coordinator
       obj = s_nameingcontext.resolve_str(coordinator_name);
-      m_coordinator = CoordinatorHelper.narrow(obj);
+      s_coordinator = CoordinatorHelper.narrow(obj);
       // Create worker object
       m_obj = new workerImpl(worker_name);
       // Register Object for CORBA
@@ -84,7 +93,7 @@ public class main_starter {
       m_path = s_nameingcontext.to_name(worker_name);
       s_nameingcontext.rebind(m_path, href);
       // Register at coordinator
-      m_coordinator.register(worker_name, starter_name);
+      s_coordinator.register(worker_name, starter_name);
       m_name = worker_name;
     } catch (Exception e) {
       e.printStackTrace();

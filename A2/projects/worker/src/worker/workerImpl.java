@@ -17,7 +17,7 @@ import coordinator.CoordinatorHelper;
 public class workerImpl extends WorkerPOA {
   private String m_name;
   private Thread m_thread;
-  private LinkedBlockingQueue<Job> m_jobs;
+  private LinkedBlockingQueue<IJob> m_jobs;
   private volatile boolean run = true;
   private Semaphore m_sema;
 
@@ -26,14 +26,14 @@ public class workerImpl extends WorkerPOA {
   private String  m_right_name = "";
   private boolean m_left = false;
   private boolean m_right = false;
-  private int     m_left_val = 0;
-  private int     m_right_val = 0;
-  private String  m_snapshot_sender = "";
+  private int     m_old_seq = -1;
+  private boolean m_terminate = false;
+  private int     m_delay = 0;
   private Monitor m_monitor = null;
   private Worker  m_leftneighbor = null; // reference to our neighbors
   private Worker  m_rightneighbor = null;
 
-  private Runnable worker_runnable = new Runnable(){
+  private Runnable worker_runnable = new Runnable() {
     @Override
     public void run() {
       NamingContextExt nc = main_starter.main_starter.get_naming_context();
@@ -50,97 +50,74 @@ public class workerImpl extends WorkerPOA {
         main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
             "workerImpl", "run",
             "while(run) loop (TRACE)");
-        if (m_left && m_right) {
-          main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
-              "workerImpl", "run",
-              "m_snapshot_sender: " + m_snapshot_sender + " m_left_name: " + m_left_name + " m_right_name: " + m_right_name);
-          if (m_snapshot_sender == m_left_name || m_snapshot_sender == m_right_name) {
-            m_left = false;
-            m_right = false;
-            continue;
-          }
-          try {
-            /*obj = nc.resolve_str(m_snapshot_sender);
-            Worker sender = WorkerHelper.narrow(obj);
-            //int seqnum = 0; // TODO: find out where to get that from
-            sender.snapshot(m_name);*/
-            obj = nc.resolve_str(m_snapshot_sender);
-            Coordinator sender = CoordinatorHelper.narrow(obj);
-            // TODO: Replace 0 with seq number
-            sender.inform(m_name, 0, m_left_val == m_right_val &&
-                m_left_val == m_currentValue, m_currentValue);
-          } catch (NotFound | CannotProceed | InvalidName e) {
-            e.printStackTrace();
-          }
-        }
-        Job current_job = null;
-        main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
-            "workerImpl", "run",
-            "before m_jobs.take() (TRACE)");
+        IJob cur_job = null;
         try {
-          current_job = m_jobs.take();
+          cur_job = m_jobs.take();
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
-        main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
-            "workerImpl", "run",
-            "after m_jobs.take() (TRACE)");
-        if (current_job.marker()) {
-          if (current_job.sender() == m_left_name) {
-            m_left = true;
-            m_left_val = current_job.value();
-          } else if (current_job.sender() == m_right_name) {
-            m_right = true;
-            m_right_val = current_job.value();
-          } else {
-            // Sender was coordinator ...
+        if (cur_job instanceof Marker) {
+          // Marker
+          Marker cur_marker = (Marker)cur_job;
+          if (m_old_seq < cur_marker.seq()) {
+            // new snapshot run, reset internal values...
+            m_old_seq = cur_marker.seq();
+            m_left = false;
+            m_right = false;
+            m_terminate = true;
+            // Send marker to neigbors
+            m_leftneighbor.snapshot(m_name, cur_marker.seq());
+            m_rightneighbor.snapshot(m_name, cur_marker.seq());
           }
-          if (!m_left) {
-            // Send marker to left
-            send_marker(m_left_name);
-          }
-          if (!m_right) {
-            // Send marker to right
-            send_marker(m_right_name);
-          }
-        } else {
-          if (current_job.value() > 0) {
-            if (m_currentValue == 0) {
-              m_currentValue = current_job.value(); // getting the first value
-                                                    // doing it this way means we can only ever use a worker for one run of calculations
-              // send the first round of messages to the neighbors
-              m_leftneighbor.shareResult(m_name, m_currentValue);
-              m_rightneighbor.shareResult(m_name, m_currentValue);
-            } else {
-              if (current_job.value() < m_currentValue) {
-                m_currentValue = ((m_currentValue - 1) % current_job.value()) + 1;
-                m_leftneighbor.shareResult(m_name, m_currentValue);
-                m_rightneighbor.shareResult(m_name, m_currentValue);
-              }
+          if (cur_marker.seq() == m_old_seq) {
+            // Got marker with same seq number
+            // this means it is a response to our marker
+            if (cur_marker.sender().equals(m_left_name)) {
+              m_left = true;
+            }
+            if (cur_marker.sender().equals(m_right_name)) {
+              m_right = true;
+            }
+            if (m_left && m_right) {
+              // Got response from both sides...
+              Coordinator coord = main_starter.main_starter.get_coordinator();
+              coord.inform(m_name, m_old_seq, m_terminate, m_currentValue);
             }
           }
+          m_monitor.terminieren(m_name, cur_marker.sender(), m_terminate);
+        } else {
+          // Calculation
+          Calculation cur_calc = (Calculation)cur_job;
+          if (m_currentValue == 0) {
+            // Get first value...
+            m_currentValue = cur_calc.value();
+            m_leftneighbor.shareResult(m_name, m_currentValue);
+            m_rightneighbor.shareResult(m_name, m_currentValue);
+          }
+          if (cur_calc.value() < m_currentValue) {
+            // Simulate some calculation time :-)
+            try {
+              Thread.sleep(m_delay);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            m_currentValue = ((m_currentValue - 1) % cur_calc.value()) + 1;
+            m_terminate = false;
+            m_leftneighbor.shareResult(m_name, m_currentValue);
+            m_rightneighbor.shareResult(m_name, m_currentValue);
+          }
+          m_monitor.rechnen(m_name, cur_calc.sender(), cur_calc.value());
         }
       }
     }
   };
-
-  private void send_marker(final String name) {
-    NamingContextExt nc = main_starter.main_starter.get_naming_context();
-    try {
-      org.omg.CORBA.Object obj = nc.resolve_str(m_right_name);
-      Worker sender = WorkerHelper.narrow(obj);
-      sender.snapshot(m_name);
-    } catch (NotFound | CannotProceed | InvalidName e) {
-      e.printStackTrace();
-    }
-  }
 
   public workerImpl(final String name) {
     main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
         "workerImpl", "workerImpl",
         "name: " + name + " (TRACE)");
     m_name = name;
-    m_jobs = new LinkedBlockingQueue<Job>();
+    m_jobs = new LinkedBlockingQueue<IJob>();
     m_thread = null;
     m_sema = new Semaphore(0);
   }
@@ -158,7 +135,6 @@ public class workerImpl extends WorkerPOA {
         "exit function... (TRACE)");
   }
 
-  // TODO: how to handle the delay ?
   @Override
   public void init(String left, String right, int value, int delay,
       String monitor) {
@@ -168,8 +144,9 @@ public class workerImpl extends WorkerPOA {
         delay + " monitor: " + monitor + " (TRACE)");
     m_left_name  = left;
     m_right_name = right;
+    m_delay = delay;
     try {
-      m_jobs.put(new Job(value, false, monitor));
+      m_jobs.put(new Calculation("", value));
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -177,7 +154,6 @@ public class workerImpl extends WorkerPOA {
     try {
       org.omg.CORBA.Object obj = main_starter.main_starter.get_naming_context()
           .resolve_str(monitor);
-
       m_monitor = MonitorHelper.narrow(obj);
     } catch (NotFound | CannotProceed | InvalidName e) {
       e.printStackTrace();
@@ -193,7 +169,7 @@ public class workerImpl extends WorkerPOA {
         "workerImpl", "shareResult",
         "sender: " + sender + " value: " + value + " (TRACE)");
     try {
-      m_jobs.put(new Job(value, false, sender));
+      m_jobs.put(new Calculation(sender, value));
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -212,27 +188,6 @@ public class workerImpl extends WorkerPOA {
   }
 
   @Override
-  public void snapshot(String sender) {
-    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
-        "workerImpl", "snapshot", "sender: " + sender + " (TRACE)");
-    // TODO: Identifie if sender is coordinator
-    //       if the sender is the coordinator,
-    //       the worker has to send the maker
-    //       back to the coordinator...
-    m_snapshot_sender = sender;
-    m_left = false;
-    m_right = false;
-    try {
-      m_jobs.put(new Job(0, true, sender));
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-
-    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
-        "workerImpl", "snapshot", "exit function... (TRACE)");
-  }
-
-  @Override
   public String getName() {
     return m_name;
   }
@@ -243,5 +198,18 @@ public class workerImpl extends WorkerPOA {
       m_thread = new Thread(worker_runnable);
       m_thread.start();
     }
+  }
+
+  @Override
+  public void snapshot(String sender, int seq) {
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "snapshot", "sender: " + sender + " (TRACE)");
+    try {
+      m_jobs.put(new Marker(sender, seq));
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "snapshot", "exit function... (TRACE)");
   }
 }

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 
 public class io_logger {
+  private static final boolean ENABLED = false;
   private io_logger() {
     // nop
   }
@@ -20,6 +21,10 @@ public class io_logger {
                                final String class_name,
                                final String fun_name,
                                final String opt_text) {
+    if (!ENABLED) {
+      // Logger is disabled...
+      return; 
+    }
     if (level == log_level.INFO) {
       m_output.append("[INFO] ");
     } else if (level == log_level.WARNING) {

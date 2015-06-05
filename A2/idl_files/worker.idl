@@ -22,8 +22,9 @@ module worker {
     /**
      * Send a snapshot request to worker
      * @param sender The sender of the marker
+     * @param seq  sequence number of this snapshot run
      */
-    void snapshot(in string sender);
+    void snapshot(in string sender, in long seq);
 
     /**
      * Kill the ggT Prozess (Worker)

@@ -26,6 +26,8 @@ public class coordinatorImpl extends CoordinatorPOA {
   private Semaphore m_wait = null;
   private ArrayList<String> m_newworker;
 
+  private int m_seq_counter = 0;
+
   // This task will kick off the snapshot
   private final TimerTask m_ts = new TimerTask() {
     @Override
@@ -40,7 +42,7 @@ public class coordinatorImpl extends CoordinatorPOA {
           org.omg.CORBA.Object obj = main_starter.main_starter
               .get_naming_context().resolve_str(kickoff_at);
           Worker w = WorkerHelper.narrow(obj);
-          w.snapshot(m_name);
+          w.snapshot(m_name, m_seq_counter++);
         } catch (NotFound | CannotProceed | InvalidName e) {
           e.printStackTrace();
         }
@@ -175,7 +177,6 @@ public class coordinatorImpl extends CoordinatorPOA {
       m_newworker.clear();
     }
     // Actually build ring, based on reference array
-    // TODO: Better logic to support also 1 or 2 worker rings...
     int[] start_values = new int[workers.length];
     if (workers.length >= 3) {
       main_starter.logger.get_instance().log(main_starter.log_level.INFO,
@@ -193,7 +194,7 @@ public class coordinatorImpl extends CoordinatorPOA {
         right_obj = workers[idx_right];
         final int random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
         start_values[idx_middle] = random_start_val;
-        int delay = 400; // TODO: ... What has to be done here?
+        int delay = randInt(delayLower, delayUpper);
         workers[idx_middle].init(left_obj.getName(), right_obj.getName(),
             random_start_val, delay, monitor_name);
       }
@@ -204,12 +205,12 @@ public class coordinatorImpl extends CoordinatorPOA {
             "coordinatorImpl", "calculate", "Build ring... (ONLY 2 WORKER)");
         int random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
         start_values[0] = random_start_val;
-        int delay = 400; // TODO: ... What has to be done here?
+        int delay = randInt(delayLower, delayUpper);
         workers[0].init(workers[0].getName(), workers[1].getName(),
             random_start_val, delay, main_starter.main_starter.get_monitor_string());
         random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
         start_values[1] = random_start_val;
-        delay = 400; // TODO: ... What has to be done here?
+        delay = randInt(delayLower, delayUpper);
         workers[1].init(workers[1].getName(), workers[0].getName(),
             random_start_val, delay, main_starter.main_starter.get_monitor_string());
       } else {
