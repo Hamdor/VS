@@ -12,7 +12,6 @@ import org.omg.CosNaming.NamingContextPackage.InvalidName;
 import org.omg.CosNaming.NamingContextPackage.NotFound;
 
 import coordinator.Coordinator;
-import coordinator.CoordinatorHelper;
 
 public class workerImpl extends WorkerPOA {
   private String m_name;
@@ -85,6 +84,9 @@ public class workerImpl extends WorkerPOA {
             }
           }
           m_monitor.terminieren(m_name, cur_marker.sender(), m_terminate);
+          if (m_terminate) {
+            main_starter.main_starter.get_coordinator().inform(m_name, 0, m_terminate, 0);
+          }
         } else {
           // Calculation
           Calculation cur_calc = (Calculation)cur_job;
@@ -127,6 +129,7 @@ public class workerImpl extends WorkerPOA {
         "workerImpl", "run", "");
     try {
       m_sema.acquire();
+      m_thread.join();
     } catch (InterruptedException e) {
       e.printStackTrace();
     }

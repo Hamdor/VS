@@ -2,6 +2,7 @@ package coordinator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Random;
 import java.util.Set;
 import java.util.Timer;
@@ -25,35 +26,15 @@ public class coordinatorImpl extends CoordinatorPOA {
   private Semaphore m_sema;
   private Semaphore m_wait = null;
   private ArrayList<String> m_newworker;
+  private Worker m_running_workers[];
 
   private int m_seq_counter = 0;
-
-  // This task will kick off the snapshot
-  private final TimerTask m_ts = new TimerTask() {
-    @Override
-    public void run() {
-      synchronized (m_registry) {
-        if (m_registry.isEmpty()) {
-          return;
-        }
-        String kickoff_at = m_registry.get(
-            m_registry.keySet().iterator().next()).get(0);
-        try {
-          org.omg.CORBA.Object obj = main_starter.main_starter
-              .get_naming_context().resolve_str(kickoff_at);
-          Worker w = WorkerHelper.narrow(obj);
-          w.snapshot(m_name, m_seq_counter++);
-        } catch (NotFound | CannotProceed | InvalidName e) {
-          e.printStackTrace();
-        }
-      }
-    }
-  };
 
   private Timer m_timer = null;
 
   public coordinatorImpl(final String name) {
     m_name = name;
+    //               Key: StarterName, Value: Worker List
     m_registry = new HashMap<String, ArrayList<String>>();
     m_sema = new Semaphore(0);
     m_newworker = new ArrayList<String>();
@@ -101,11 +82,49 @@ public class coordinatorImpl extends CoordinatorPOA {
   }
 
   @Override
-  public void inform(String whom, int seqNr, boolean finished, int current) {
+  public synchronized void inform(String whom, int seqNr, boolean finished,
+                                  int current) {
     main_starter.logger.get_instance().log(main_starter.log_level.INFO,
                                            "coordinatorImpl", "inform", "");
-    // TODO:  I think this has to be send to the monitor
-    //        called from worker who got marker message (after worker got all results)
+    if (!finished) {
+      return;
+    }
+    // if we got this message, this means the worker has finished...
+    for (int i = 0; i < m_running_workers.length; ++i) {
+      if (m_running_workers[i] != null
+          && m_running_workers[i].getName().equals(whom)) {
+        m_running_workers[i] = null;
+      }
+    }
+    int count = m_running_workers.length;
+    for (Worker w : m_running_workers) {
+      if (w == null) {
+        count--;
+      }
+    }
+    if (count == 0) {
+      NamingContextExt nc = main_starter.main_starter.get_naming_context();
+      m_timer.cancel();
+      m_timer.purge();
+      // Kill all workers
+      Iterator<ArrayList<String>> worker_names = null;
+      synchronized(m_registry) {
+        worker_names = m_registry.values().iterator();
+        while(worker_names.hasNext()) {
+          ArrayList<String> list = worker_names.next();
+          for (String worker : list) {
+            try {
+              org.omg.CORBA.Object obj = nc.resolve_str(worker);
+              Worker wobj = WorkerHelper.narrow(obj);
+              wobj.kill();
+            } catch (NotFound | CannotProceed | InvalidName e) {
+              //e.printStackTrace();
+            }
+          }
+          list.clear();
+        }
+      }
+    }
   }
 
   @Override
@@ -161,15 +180,14 @@ public class coordinatorImpl extends CoordinatorPOA {
     main_starter.main_starter.get_monitor().ring(s);
     // Get reference to all workers and store them into array
     // later we can build the ring, based on this array
-    Worker[] workers = null;
+    m_running_workers = null;
     synchronized(m_newworker) {
-      workers = new Worker[m_newworker.size()];
+      m_running_workers = new Worker[m_newworker.size()];
       int idx = 0;
       for (String wid : m_newworker) {
         try {
           org.omg.CORBA.Object obj = nc.resolve_str(wid);
-          workers[idx++] = WorkerHelper.narrow(obj);
-
+          m_running_workers[idx++] = WorkerHelper.narrow(obj);
         } catch (NotFound | CannotProceed | InvalidName e) {
           e.printStackTrace();
         }
@@ -177,41 +195,42 @@ public class coordinatorImpl extends CoordinatorPOA {
       m_newworker.clear();
     }
     // Actually build ring, based on reference array
-    int[] start_values = new int[workers.length];
-    if (workers.length >= 3) {
+    int[] start_values = new int[m_running_workers.length];
+    if (m_running_workers.length >= 3) {
       main_starter.logger.get_instance().log(main_starter.log_level.INFO,
           "coordinatorImpl", "calculate", "Build ring... (mod 3 OK) (TRACE)");
-      int idx_left   = workers.length-1;
+      int idx_left   = m_running_workers.length-1;
       int idx_middle = 0;
       int idx_right  = 1;
       Worker left_obj  = null;
       Worker right_obj = null;
       String monitor_name = main_starter.main_starter.get_monitor_string();
-      for (; idx_middle < workers.length; ++idx_middle
-          , idx_left  = ++idx_left % workers.length
-          , idx_right = ++idx_right % workers.length) {
-        left_obj  = workers[idx_left];
-        right_obj = workers[idx_right];
+      for (; idx_middle < m_running_workers.length; ++idx_middle
+          , idx_left  = ++idx_left % m_running_workers.length
+          , idx_right = ++idx_right % m_running_workers.length) {
+        left_obj  = m_running_workers[idx_left];
+        right_obj = m_running_workers[idx_right];
         final int random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
         start_values[idx_middle] = random_start_val;
         int delay = randInt(delayLower, delayUpper);
-        workers[idx_middle].init(left_obj.getName(), right_obj.getName(),
+        m_running_workers[idx_middle].init(left_obj.getName(), right_obj.getName(),
             random_start_val, delay, monitor_name);
       }
     } else {
-      if (workers.length == 2) {
+      if (m_running_workers.length == 2) {
         // Just start 2 workers...
         main_starter.logger.get_instance().log(main_starter.log_level.WARNING,
             "coordinatorImpl", "calculate", "Build ring... (ONLY 2 WORKER)");
         int random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
         start_values[0] = random_start_val;
         int delay = randInt(delayLower, delayUpper);
-        workers[0].init(workers[0].getName(), workers[1].getName(),
+        m_running_workers[0].init(m_running_workers[0].getName(),
+            m_running_workers[1].getName(),
             random_start_val, delay, main_starter.main_starter.get_monitor_string());
         random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
         start_values[1] = random_start_val;
         delay = randInt(delayLower, delayUpper);
-        workers[1].init(workers[1].getName(), workers[0].getName(),
+        m_running_workers[1].init(m_running_workers[1].getName(), m_running_workers[0].getName(),
             random_start_val, delay, main_starter.main_starter.get_monitor_string());
       } else {
         // only 1 worker...
@@ -223,12 +242,31 @@ public class coordinatorImpl extends CoordinatorPOA {
     // Call `startzahlen` on monitor
     main_starter.main_starter.get_monitor().startzahlen(start_values);
     // Start underlying threads at worker process
-    for (Worker w : workers) {
+    for (Worker w : m_running_workers) {
       w.start();
     }
     // Start snapshot timer...
     m_timer = new Timer();
-    m_timer.scheduleAtFixedRate(m_ts, period, period);
+    m_timer.scheduleAtFixedRate(new TimerTask() {
+      @Override
+      public void run() {
+        synchronized (m_registry) {
+          if (m_registry.isEmpty()) {
+            return;
+          }
+          String kickoff_at = m_registry.get(
+              m_registry.keySet().iterator().next()).get(0);
+          try {
+            org.omg.CORBA.Object obj = main_starter.main_starter
+                .get_naming_context().resolve_str(kickoff_at);
+            Worker w = WorkerHelper.narrow(obj);
+            w.snapshot(m_name, m_seq_counter++);
+          } catch (NotFound | CannotProceed | InvalidName e) {
+            e.printStackTrace();
+          }
+        }
+      }
+    }, period, period);
   }
 
   /**

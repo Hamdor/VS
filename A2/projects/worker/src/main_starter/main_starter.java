@@ -14,8 +14,6 @@ import org.omg.PortableServer.POAHelper;
 
 import coordinator.Coordinator;
 import coordinator.CoordinatorHelper;
-import starter.Starter;
-import starter.StarterHelper;
 import worker.Worker;
 import worker.WorkerHelper;
 import worker.workerImpl;
@@ -47,7 +45,6 @@ public class main_starter {
   private POA m_rootpoa = null;
   private workerImpl m_obj = null;
   private NameComponent[] m_path = null;
-  private Starter m_starter = null;
 
   public static String m_name = "";
 
@@ -79,11 +76,8 @@ public class main_starter {
       m_rootpoa.the_POAManager().activate();
       s_nameingcontext = NamingContextExtHelper.narrow(m_orb
           .resolve_initial_references("NameService"));
-      // Get reference to starter
-      org.omg.CORBA.Object obj = s_nameingcontext.resolve_str(starter_name);
-      m_starter = StarterHelper.narrow(obj);
       // Get reference to coordinator
-      obj = s_nameingcontext.resolve_str(coordinator_name);
+      org.omg.CORBA.Object obj = s_nameingcontext.resolve_str(coordinator_name);
       s_coordinator = CoordinatorHelper.narrow(obj);
       // Create worker object
       m_obj = new workerImpl(worker_name);
