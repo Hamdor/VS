@@ -1,0 +1,11 @@
+--- HAWMetering.java	2015-06-06 13:39:32.514812613 +0200
++++ HAWMetering.java	2015-06-06 13:39:43.518648151 +0200
+@@ -51,7 +51,7 @@
+         String names[] = {"nw", "no", "sw", "so"};
+         for (int i = 0; i < chart.length; i++) {
+             HAWMeteringWebservice webservice = new HAWMeteringWebservice(chart[i]);
+-            Endpoint.publish("http://0.0.0.0:9999/hawmetering/" + names[i], webservice);
++            Endpoint.publish("http://localhost:9999/hawmetering/" + names[i], webservice);
+         }
+     }
+ 
