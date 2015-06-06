@@ -1,0 +1,8 @@
+#!/bin/bash
+cd HAWMeterClient
+java -cp build/ hawmeterclient/HAWMeterClient http://localhost:9999/hawmetering/no\?WSDL setValue 42
+java -cp build/ hawmeterclient/HAWMeterClient http://localhost:9999/hawmetering/no\?WSDL setRange 0 200
+java -cp build/ hawmeterclient/HAWMeterClient http://localhost:9999/hawmetering/no\?WSDL setIntervals bla 0 100 1 2 3 55
+java -cp build/ hawmeterclient/HAWMeterClient http://localhost:9999/hawmetering/no\?WSDL clearIntervals
+java -cp build/ hawmeterclient/HAWMeterClient http://localhost:9999/hawmetering/no\?WSDL setTitle blubba
+cd ..

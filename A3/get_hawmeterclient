@@ -1,0 +1,10 @@
+#!/bin/bash
+if [[ "$1" != "compile-only" ]]; then
+  wget http://tiserver02.cpt.haw-hamburg.de/htm/vs/ws/HAWMeterClient.zip
+  unzip -o HAWMeterClient.zip
+  rm -f HAWMeterClient.zip
+fi
+
+cd HAWMeterClient
+wsimport -keep -d build -p hawmeterproxy -s src http://localhost:9999/hawmetering/nw?WSDL
+javac -d build -cp src src/hawmeterclient/HAWMeterClient.java
