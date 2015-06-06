@@ -45,7 +45,7 @@ public class workerImpl extends WorkerPOA {
       } catch (NotFound | CannotProceed | InvalidName e1) {
         e1.printStackTrace();
       }
-      while (run) {
+      while (run || !m_jobs.isEmpty()) {
         main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
             "workerImpl", "run",
             "while(run) loop (TRACE)");
