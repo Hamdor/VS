@@ -1,0 +1,8 @@
+#!/bin/bash
+mkdir sniffer
+cd sniffer
+wget http://tiserver02.cpt.haw-hamburg.de/htm/vs/clocksync/clocksync.zip
+unzip -o clocksync.zip
+rm -f clocksync.zip
+rm -f sniffer.c~
+make
