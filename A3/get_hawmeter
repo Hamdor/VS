@@ -3,11 +3,12 @@ if [[ "$1" != "compile-only" ]]; then
   wget http://tiserver02.cpt.haw-hamburg.de/htm/vs/ws/HAWMeter.zip
   unzip -o HAWMeter.zip
   rm -f HAWMeter.zip
-
-  cp fix_bind_exception.patch HAWMeter/src/hawmetering
-  cd HAWMeter/src/hawmetering
-  patch < fix_bind_exception.patch
-  cd ../../../
+  if [[ "$1" != "no-patch" ]]; then
+    cp fix_bind_exception.patch HAWMeter/src/hawmetering
+    cd HAWMeter/src/hawmetering
+    patch < fix_bind_exception.patch
+    cd ../../../
+  fi
 fi
 
 # build haw meter
