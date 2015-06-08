@@ -149,7 +149,7 @@ public class coordinatorImpl extends CoordinatorPOA {
         "coordinatorImpl", "calculate", "");
     final NamingContextExt nc = main_starter.main_starter.get_naming_context();
     synchronized(m_registry) {
-      final int num = randInt(ggTLower, ggTUpper) * m_registry.keySet().size();
+      final int num = randInt(ggTLower, ggTUpper);
       m_wait = new Semaphore(-(num * m_registry.keySet().size())+1);
       for (String starter_name : m_registry.keySet()) {
         try {
