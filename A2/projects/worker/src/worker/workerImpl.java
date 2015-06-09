@@ -31,6 +31,7 @@ public class workerImpl extends WorkerPOA {
   private Monitor m_monitor = null;
   private Worker  m_leftneighbor = null; // reference to our neighbors
   private Worker  m_rightneighbor = null;
+  private boolean m_is_starter = false;
 
   private Runnable worker_runnable = new Runnable() {
     @Override
@@ -81,7 +82,6 @@ public class workerImpl extends WorkerPOA {
               // Got response from both sides...
               Coordinator coord = main_starter.main_starter.get_coordinator();
               coord.inform(m_name, m_old_seq, m_terminate, m_currentValue);
-              
               if (m_terminate) {
                 main_starter.main_starter.get_coordinator().inform(m_name, 0, m_terminate, 0);
               }
@@ -91,11 +91,17 @@ public class workerImpl extends WorkerPOA {
         } else {
           // Calculation
           Calculation cur_calc = (Calculation)cur_job;
+          if (cur_calc.value() == -1) { break; }
           if (m_currentValue == 0) {
             // Get first value...
             m_currentValue = cur_calc.value();
-            m_leftneighbor.shareResult(m_name, m_currentValue);
-            m_rightneighbor.shareResult(m_name, m_currentValue);
+//            m_leftneighbor.shareResult(m_name, m_currentValue);
+//            m_rightneighbor.shareResult(m_name, m_currentValue);
+            if (m_is_starter) {
+              m_leftneighbor.shareResult(m_name, m_currentValue);
+              m_rightneighbor.shareResult(m_name, m_currentValue);
+              m_is_starter = false;
+            }
           } else if (cur_calc.value() < m_currentValue) {
             // Simulate some calculation time :-)
             try {
@@ -111,6 +117,7 @@ public class workerImpl extends WorkerPOA {
           //m_monitor.rechnen(m_name, cur_calc.sender(), cur_calc.value());
         }
       }
+      m_monitor.ergebnis(m_name, m_currentValue);
     }
   };
 
@@ -139,34 +146,6 @@ public class workerImpl extends WorkerPOA {
   }
 
   @Override
-  public void init(String left, String right, int value, int delay,
-      String monitor) {
-    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
-        "workerImpl", "init",
-        "left: " + left + " right: " + right + " value: " + value + " delay: " +
-        delay + " monitor: " + monitor + " (TRACE)");
-    m_left_name  = left;
-    m_right_name = right;
-    m_delay = delay;
-    try {
-      m_jobs.put(new Calculation("", value));
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    // Get reference to monitor
-    try {
-      org.omg.CORBA.Object obj = main_starter.main_starter.get_naming_context()
-          .resolve_str(monitor);
-      m_monitor = MonitorHelper.narrow(obj);
-    } catch (NotFound | CannotProceed | InvalidName e) {
-      e.printStackTrace();
-    }
-    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
-        "workerImpl", "init",
-        "exit function... (TRACE)");
-  }
-
-  @Override
   public void shareResult(String sender, int value) {
     main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
         "workerImpl", "shareResult",
@@ -188,6 +167,7 @@ public class workerImpl extends WorkerPOA {
         "workerImpl", "kill", "");
     run = false;
     m_sema.release();
+    m_jobs.add(new Calculation("", -1));
   }
 
   @Override
@@ -214,5 +194,34 @@ public class workerImpl extends WorkerPOA {
     }
     main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
         "workerImpl", "snapshot", "exit function... (TRACE)");
+  }
+
+  @Override
+  public void init(String left, String right, int value, int delay,
+      String monitor, boolean start) {
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "init",
+        "left: " + left + " right: " + right + " value: " + value + " delay: " +
+        delay + " monitor: " + monitor + " (TRACE)");
+    m_left_name  = left;
+    m_right_name = right;
+    m_delay = delay;
+    m_is_starter = start;
+    NamingContextExt nc = main_starter.main_starter.get_naming_context();
+    org.omg.CORBA.Object obj;
+    try {
+      obj = nc.resolve_str(monitor);
+      m_monitor = MonitorHelper.narrow(obj);
+    } catch (NotFound | CannotProceed | InvalidName e1) {
+      e1.printStackTrace();
+    }
+    try {
+      m_jobs.put(new Calculation("", value));
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    main_starter.io_logger.get_instance().log(main_starter.log_level.INFO,
+        "workerImpl", "init",
+        "exit function... (TRACE)");
   }
 }

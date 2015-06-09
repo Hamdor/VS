@@ -1,4 +1,4 @@
 #!/bin/bash
-#java -cp starter/bin/:. main_starter.main_starter --name=$1 --coordinator=$2 -ORBInitialPort 5000 -ORBInitialHost lab22
-java -cp starter/bin/:. main_starter.main_starter --name=$1 --coordinator=$2 -ORBInitialPort 2000 -ORBInitialHost lab25
+java -cp starter/bin/:. main_starter.main_starter --name=$1 --coordinator=$2 -ORBInitialPort 5000 -ORBInitialHost lab22
+#java -cp starter/bin/:. main_starter.main_starter --name=$1 --coordinator=$2 -ORBInitialPort 2000 -ORBInitialHost lab25
 

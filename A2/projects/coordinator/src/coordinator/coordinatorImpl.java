@@ -1,6 +1,7 @@
 package coordinator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Random;
@@ -80,13 +81,13 @@ public class coordinatorImpl extends CoordinatorPOA {
       }
     }
   }
-
+  
   @Override
   public synchronized void inform(String whom, int seqNr, boolean finished,
                                   int current) {
     main_starter.logger.get_instance().log(main_starter.log_level.INFO,
                                            "coordinatorImpl", "inform", "");
-    if (!finished) {
+    if (!finished || seqNr != m_seq_counter) {
       return;
     }
     // if we got this message, this means the worker has finished...
@@ -194,6 +195,13 @@ public class coordinatorImpl extends CoordinatorPOA {
       }
       m_newworker.clear();
     }
+    
+    final int[] randomValues = new int[m_running_workers.length];
+    for (int i = 0; i < randomValues.length; ++i) {
+      randomValues[i] = expectedggT * randInt(1, 100) * randInt(1, 100);
+    }
+    Arrays.sort(randomValues);
+    
     // Actually build ring, based on reference array
     int[] start_values = new int[m_running_workers.length];
     if (m_running_workers.length >= 3) {
@@ -210,11 +218,10 @@ public class coordinatorImpl extends CoordinatorPOA {
           , idx_right = ++idx_right % m_running_workers.length) {
         left_obj  = m_running_workers[idx_left];
         right_obj = m_running_workers[idx_right];
-        final int random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
-        start_values[idx_middle] = random_start_val;
+        start_values[idx_middle] = randomValues[idx_middle];
         int delay = randInt(delayLower, delayUpper);
         m_running_workers[idx_middle].init(left_obj.getName(), right_obj.getName(),
-            random_start_val, delay, monitor_name);
+            randomValues[idx_middle], delay, monitor_name, (idx_middle < 3 ? true : false));
       }
     } else {
       if (m_running_workers.length == 2) {
@@ -226,12 +233,12 @@ public class coordinatorImpl extends CoordinatorPOA {
         int delay = randInt(delayLower, delayUpper);
         m_running_workers[0].init(m_running_workers[0].getName(),
             m_running_workers[1].getName(),
-            random_start_val, delay, main_starter.main_starter.get_monitor_string());
+            random_start_val, delay, main_starter.main_starter.get_monitor_string(), true);
         random_start_val = expectedggT * randInt(1, 100) * randInt(1, 100);
         start_values[1] = random_start_val;
         delay = randInt(delayLower, delayUpper);
         m_running_workers[1].init(m_running_workers[1].getName(), m_running_workers[0].getName(),
-            random_start_val, delay, main_starter.main_starter.get_monitor_string());
+            random_start_val, delay, main_starter.main_starter.get_monitor_string(), true);
       } else {
         // only 1 worker...
         main_starter.logger.get_instance().log(main_starter.log_level.ERROR,
@@ -260,7 +267,8 @@ public class coordinatorImpl extends CoordinatorPOA {
             org.omg.CORBA.Object obj = main_starter.main_starter
                 .get_naming_context().resolve_str(kickoff_at);
             Worker w = WorkerHelper.narrow(obj);
-            w.snapshot(m_name, m_seq_counter++);
+            m_seq_counter++;
+            w.snapshot(m_name, m_seq_counter);
           } catch (NotFound | CannotProceed | InvalidName e) {
             e.printStackTrace();
           }

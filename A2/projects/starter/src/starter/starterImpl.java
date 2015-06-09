@@ -52,7 +52,7 @@ public class starterImpl extends StarterPOA {
         String arguments = "--name=" + unique_name
             + " --starter=" + m_name
             + " --coordinator=" + main_starter.main_starter.get_coordinator_name()
-            + " -ORBInitialPort 2000 " + " -ORBInitialHost lab25";
+            + " -ORBInitialPort 5000 " + " -ORBInitialHost lab22";
         r.exec(cmdworker + " " + arguments);
         main_starter.logger.get_instance().log(main_starter.log_level.INFO,
                                                "starterImpl", "startWorker",

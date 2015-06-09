@@ -1,3 +1,3 @@
 #!/bin/bash
-#java -cp client/bin/:. main_starter.main_starter --coordinator=coordi -ORBInitialPort 5000 -ORBInitialHost lab22
-java -cp client/bin/:. main_starter.main_starter --coordinator=coordi -ORBInitialPort 2000 -ORBInitialHost lab25
+java -cp client/bin/:. main_starter.main_starter --coordinator=ac -ORBInitialPort 5000 -ORBInitialHost lab22
+#java -cp client/bin/:. main_starter.main_starter --coordinator=coordi -ORBInitialPort 2000 -ORBInitialHost lab25
