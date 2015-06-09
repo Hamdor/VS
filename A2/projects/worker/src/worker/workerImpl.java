@@ -81,12 +81,13 @@ public class workerImpl extends WorkerPOA {
               // Got response from both sides...
               Coordinator coord = main_starter.main_starter.get_coordinator();
               coord.inform(m_name, m_old_seq, m_terminate, m_currentValue);
+              
+              if (m_terminate) {
+                main_starter.main_starter.get_coordinator().inform(m_name, 0, m_terminate, 0);
+              }
             }
           }
           m_monitor.terminieren(m_name, cur_marker.sender(), m_terminate);
-          if (m_terminate) {
-            main_starter.main_starter.get_coordinator().inform(m_name, 0, m_terminate, 0);
-          }
         } else {
           // Calculation
           Calculation cur_calc = (Calculation)cur_job;
@@ -95,8 +96,7 @@ public class workerImpl extends WorkerPOA {
             m_currentValue = cur_calc.value();
             m_leftneighbor.shareResult(m_name, m_currentValue);
             m_rightneighbor.shareResult(m_name, m_currentValue);
-          }
-          if (cur_calc.value() < m_currentValue) {
+          } else if (cur_calc.value() < m_currentValue) {
             // Simulate some calculation time :-)
             try {
               Thread.sleep(m_delay);
@@ -108,7 +108,7 @@ public class workerImpl extends WorkerPOA {
             m_leftneighbor.shareResult(m_name, m_currentValue);
             m_rightneighbor.shareResult(m_name, m_currentValue);
           }
-          m_monitor.rechnen(m_name, cur_calc.sender(), cur_calc.value());
+          //m_monitor.rechnen(m_name, cur_calc.sender(), cur_calc.value());
         }
       }
     }

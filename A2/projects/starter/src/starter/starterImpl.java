@@ -22,7 +22,7 @@ public class starterImpl extends StarterPOA {
 
   private ArrayList<String> m_worker_names;
 
-  private static final String fullcp = "/Users/Hamdor/gitrepos/VS/A2/projects/worker/bin/";
+  private static final String fullcp = "/home/students/abl424/gitrepos/VS/A2/projects/worker/bin/";
   private static final String cmdworker = "java -cp " + fullcp + ":. main_starter.main_starter";
 
   public starterImpl(final String name) {
@@ -52,7 +52,7 @@ public class starterImpl extends StarterPOA {
         String arguments = "--name=" + unique_name
             + " --starter=" + m_name
             + " --coordinator=" + main_starter.main_starter.get_coordinator_name()
-            + " -ORBInitialPort 2000 " + " -ORBInitialHost localhost";
+            + " -ORBInitialPort 2000 " + " -ORBInitialHost lab25";
         r.exec(cmdworker + " " + arguments);
         main_starter.logger.get_instance().log(main_starter.log_level.INFO,
                                                "starterImpl", "startWorker",

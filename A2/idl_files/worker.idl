@@ -10,7 +10,7 @@ module worker {
      * @param Identifier for monitor
      */
     void init(in string left, in string right, in long value, in long delay,
-              in string monitor);
+              in string monitor, in boolean start);
 
     /**
      * Called from another worker to share its result with left and right worker
