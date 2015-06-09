@@ -42,15 +42,28 @@ public class main_starter {
   private starterImpl m_obj = null;
   private NameComponent[] m_path = null;
   private Coordinator m_coordinator = null;
+  
+  private static String s_ORBInitialPort = "";
+  private static String s_ORBInitialHost = "";
+  
+  public static String get_ORBInitialPort() {
+    return s_ORBInitialPort;
+  }
+  
+  public static String get_ORBInitialHost() {
+    return s_ORBInitialHost;
+  }
 
   private static void print_help_message() {
     StringBuilder str = new StringBuilder();
     str.append("Usage: java -cp . starter [Options...]\n");
     str.append("Arguments:\n");
-    str.append("--name=arg          Set the starter name\n");
-    str.append("--coordinator=arg   Set the coordinator name\n");
-    str.append("--build-in-props    Use the build in ORB arguments\n");
-    str.append("--help              Print this help message\n");
+    str.append("--name=arg            Set the starter name\n");
+    str.append("--coordinator=arg     Set the coordinator name\n");
+    str.append("--build-in-props      Use the build in ORB arguments\n");
+    str.append("--help                Print this help message\n");
+    str.append("--corba-fork-port=arg ORB Port to start worker at\n");
+    str.append("--corba-fork-host=arg ORB Host to start worker at\n");
     str.append("ORB Arguments are passed to CORBA Framework");
     System.out.println(str);
   }
@@ -112,7 +125,15 @@ public class main_starter {
       if (args[i].contains("--build-in-props")) {
         props = new Properties();
         props.put("org.omg.CORBA.ORBInitialPort", "20000");
+        s_ORBInitialPort = "20000";
         props.put("org.omg.CORBA.ORBInitialHost", "localhost");
+        s_ORBInitialHost = "localhost";
+      }
+      if (args[i].contains("--corba-fork-port=")) {
+        s_ORBInitialPort = read_argument(args[i]);
+      }
+      if (args[i].contains("--corba-fork-host=")) {
+        s_ORBInitialHost = read_argument(args[i]);
       }
       if (args[i].contains("--help")) {
         print_help_message();
@@ -120,7 +141,8 @@ public class main_starter {
       }
     }
     // Check input
-    if (starter_name.isEmpty() || coordinator_name.isEmpty()) {
+    if (starter_name.isEmpty() || coordinator_name.isEmpty()
+        || s_ORBInitialPort.isEmpty() || s_ORBInitialHost.isEmpty()) {
       print_help_message();
       System.exit(-1);
     }

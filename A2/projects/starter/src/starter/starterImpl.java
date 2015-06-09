@@ -52,14 +52,12 @@ public class starterImpl extends StarterPOA {
         String arguments = "--name=" + unique_name
             + " --starter=" + m_name
             + " --coordinator=" + main_starter.main_starter.get_coordinator_name()
-            + " -ORBInitialPort 5000 " + " -ORBInitialHost lab22";
+            + " -ORBInitialPort " + main_starter.main_starter.get_ORBInitialPort()
+            + " -ORBInitialHost " + main_starter.main_starter.get_ORBInitialHost();
         r.exec(cmdworker + " " + arguments);
         main_starter.logger.get_instance().log(main_starter.log_level.INFO,
                                                "starterImpl", "startWorker",
                                                "started: " + number + " (TRACE)");
-        // TODO: Its not possible to remove names from this list
-        //       maybe we have to expand the idl files to support
-        //       unregister operations...
         m_worker_names.add(unique_name);
       } catch (IOException e) {
         e.printStackTrace();
