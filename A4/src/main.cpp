@@ -20,7 +20,7 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 
-#include <type_traits>
+#include <cstring>
 #include <iostream>
 
 #include "args.hpp"
@@ -75,8 +75,28 @@ void run(args arg, int fd) {
   // Set time TODO: Set correct time
   itimerspec spec = { 0, 0, 0, full_frame_nsec };
   timer_settime(timer, 0, &spec, nullptr);
-  while(true) {
-    // TODO: Handle signals
+  // Handle signals
+  siginfo_t info = { 0 };
+  while (true) {
+    // TODO: Read Socket first
+    //
+    //memset(&info, 0, sizeof(siginfo_t));
+    sigwaitinfo(&sigset, &info);
+    switch (info.si_signo) {
+      case SIGINT:
+        // Break life loop, this will cause the program to terminate
+        return;
+      break;
+      case SIGIO:
+        // New IO from socket
+      break;
+      case SIGUSR1:
+        // Timer invoked SIGUSR1 => Time to send in our slot
+      break;
+      case SIGALRM:
+        // Timer invoked SIGALRM => Time to send Beacon
+      break;
+    }
   }
 }
 
@@ -89,5 +109,6 @@ int main(int argc, char* argv[]) {
   }
   auto fd_guard = make_guard(close, fd);
   run(resu, fd);
+  cout << "\nAbout to leave main..." << endl;
 }
 
