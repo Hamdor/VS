@@ -29,6 +29,9 @@
 
 using namespace std;
 
+#define SEND_BUFFER_SIZE (256)
+#define RECV_BUFFER_SIZE (256)
+
 #define BEACON_WINDOW  (20LL) // 20 msec
 #define SECURITY_TIME1 (4LL)  //  4 msec
 #define SLOT           (4LL)  //  4 msec
@@ -70,21 +73,41 @@ void run(args arg, int fd) {
   sigprocmask(SIG_BLOCK, &sigset, NULL);
   // Initialize Linux's HRT Timer
   timer_t timer;
-  err = timer_create(CLOCK_REALTIME, &sigev, &timer);
+  err = timer_create(CLOCK_MONOTONIC, &sigev, &timer);
   auto timer_guard = make_guard(timer_delete, timer);
   // Set time TODO: Set correct time
-  itimerspec spec = { 0, 0, 0, full_frame_nsec };
+  itimerspec spec = { 0, full_frame_nsec, 0, full_frame_nsec };
   timer_settime(timer, 0, &spec, nullptr);
+  // Allocate some buffers
+  char recv_buffer[RECV_BUFFER_SIZE] = { 0 };
+  char send_buffer[SEND_BUFFER_SIZE] = { 0 };
+  char* source_addr = nullptr;
+  int   source_port = 0;
+  timespec current = { 0 };
   // Handle signals
+  bool run = true;
   siginfo_t info = { 0 };
-  while (true) {
-    // TODO: Read Socket first
-    //
-    //memset(&info, 0, sizeof(siginfo_t));
-    sigwaitinfo(&sigset, &info);
+  while (run) {
+    // SIGIO is edge sensitive, we have to ensure that the receive
+    // buffer is already empty, or we will loose a signal
+    do {
+      err = recvMessage(fd, recv_buffer, RECV_BUFFER_SIZE, &source_addr,
+                        &source_port);
+      info.si_signo = SIGIO;
+    } while (err > 0);
+    if (err == 0) {
+      // Only wait if there was no data read
+      // if err != 0, that means we received data. No need to block
+      // on one of the signals...
+      sigwaitinfo(&sigset, &info);
+    }
+    // Get current time...
+    clock_gettime(CLOCK_MONOTONIC, &current);
+    cout << "sec: " << current.tv_sec << " nsec: " << current.tv_nsec << endl;
     switch (info.si_signo) {
       case SIGINT:
         // Break life loop, this will cause the program to terminate
+        run = false;
         return;
       break;
       case SIGIO:
