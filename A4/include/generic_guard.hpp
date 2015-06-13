@@ -20,6 +20,8 @@ struct generic_guard {
   generic_guard(F fun, X a) : m_arg(a), m_fun(fun) {
     // nop
   }
+  generic_guard(const generic_guard&) = delete;
+  generic_guard(generic_guard&&) = default;
   ~generic_guard() {
     m_fun(m_arg);
   }
@@ -30,6 +32,6 @@ private:
 
 template<typename F, typename X>
 auto make_guard(F f, X x) {
-  return std::move(generic_guard<F, X>(f,x));
+  return generic_guard<F, X>(f,x);
 }
 
