@@ -20,8 +20,8 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 
-#include <sstream>
 #include <cstring>
+#include <sstream>
 #include <iostream>
 #include <stdexcept>
 
@@ -60,8 +60,8 @@ bool pred_zero(int value) {
   return value == 0;
 }
 
-bool pred_not_zero(int value) {
-  return !pred_zero(value);
+bool pred_not_minus(int value) {
+  return value >= 0;
 }
 
 // Error checking for C calls...
@@ -77,7 +77,6 @@ auto ccall(Predicate p, const char* errmsg, F f, Ts&&... xs) {
 }
 
 void run(args arg, int fd) {
-  // Error checking
   auto init_sigev = [](auto signal) {
     sigevent sig = { 0 };
     sig.sigev_notify   = SIGEV_THREAD_ID | SIGEV_SIGNAL;
@@ -114,7 +113,8 @@ void run(args arg, int fd) {
   char* source_addr = nullptr;
   int   source_port = 0;
   char own_address[128] = { 0 };
-  gethostname(own_address, sizeof(own_address));
+  ccall(pred_zero, "gethostname failed", gethostname, own_address,
+        sizeof(own_address));
   timespec current = { 0 };
   uint32_t frame_no = 0;
   uint32_t beacon_delay = MSEC_TO_NSEC(BEACON_WINDOW + SECURITY_TIME1);
@@ -135,7 +135,7 @@ void run(args arg, int fd) {
         signal = SIGIO;
         break;
       }
-      sigwaitinfo(&sigset, &info);
+      ccall(pred_not_minus, "sigwaitinfo failed", sigwaitinfo, &sigset, &info);
       if (  info.si_signo == SIGINT || info.si_signo == SIGUSR1
          || info.si_signo == SIGALRM) {
         signal = info.si_signo;
@@ -143,7 +143,8 @@ void run(args arg, int fd) {
       }
     }
     // Get current time...
-    clock_gettime(CLOCK_MONOTONIC, &current);
+    ccall(pred_zero, "clock_gettime failed", clock_gettime, CLOCK_MONOTONIC,
+          &current);
     switch (info.si_signo) {
       case SIGINT: // CTRL + C (Exit program)
         cout << endl; // just for a cleaner output...
