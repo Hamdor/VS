@@ -1,5 +1,5 @@
-CC=g++
-CCFLAGS=-std=c++14 -g
+CC=clang++
+CCFLAGS=-std=c++14 -g -fsanitize=address -fno-omit-frame-pointer
 LDFLAGS=-lrt
 all:
 	$(CC) $(CCFLAGS) $(LDFLAGS) -I include/ -I sniffer/ sniffer/datagram.c src/args.cpp src/main.cpp -o a4_out

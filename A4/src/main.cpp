@@ -67,9 +67,9 @@ bool pred_not_minus(int value) {
 // Error checking for C calls...
 template <class Predicate, class F, class... Ts>
 auto ccall(Predicate p, const char* errmsg, F f, Ts&&... xs) {
-  auto result = f(std::forward<Ts>(xs)...);
+  auto result = f(forward<Ts>(xs)...);
   if (!p(result)) {
-    std::ostringstream oss;
+    ostringstream oss;
     oss << errmsg << ": " << result;
     throw runtime_error(oss.str());
   }
@@ -125,7 +125,7 @@ void run(args arg, int fd) {
   while (run) {
     signal = 0;
     memset(&info, 0, sizeof(siginfo_t));
-    memset(&info, 0, RECV_BUFFER_SIZE);
+    memset(recv_buffer, 0, RECV_BUFFER_SIZE);
     // SIGIO is edge sensitive, we have to ensure that the receive
     // buffer is already empty, or we will loose a signal
     while (signal == 0) {
