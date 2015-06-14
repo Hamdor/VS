@@ -36,11 +36,11 @@ using namespace std;
 
 #define BEACON_WINDOW  (20LL) // 20 msec
 #define SECURITY_TIME1 (4LL)  //  4 msec
-#define SLOT           (4LL)  //  4 msec
+#define SLOT_TIME      (4LL)  //  4 msec
 #define SECURITY_TIME2 (12LL) // 12 msec
 #define NUM_SLOTS      (16)   // TODO: use in code too...
 #define FULL_FRAME \
-  (BEACON_WINDOW + SECURITY_TIME1 + NUM_SLOTS * SLOT + SECURITY_TIME2)
+  (BEACON_WINDOW + SECURITY_TIME1 + NUM_SLOTS * SLOT_TIME + SECURITY_TIME2)
 
 #define MSEC_TO_NSEC(msec) ((msec) * 1000 * 1000)
 
@@ -76,6 +76,8 @@ auto ccall(Predicate p, const char* errmsg, F f, Ts&&... xs) {
   return result;
 }
 
+enum class state_t { BEACON, SLOT };
+
 void run(args arg, int fd) {
   auto init_sigev = [](auto signal) {
     sigevent sig = { 0 };
@@ -103,8 +105,11 @@ void run(args arg, int fd) {
   ccall(pred_zero, "Init timer_slot failed", timer_create, CLOCK_MONOTONIC,
         &sigev_slot, &timer_slot);
   auto timer_guard_slot = make_guard(timer_delete, timer_slot);
-  // Set time TODO: Set correct time
-  itimerspec spec_beacon = { 0, full_frame_nsec, 0, full_frame_nsec };
+  // Set beacon time
+  uint32_t beacon_delay  = MSEC_TO_NSEC(BEACON_WINDOW + SECURITY_TIME1);
+  itimerspec spec_slot   = { 0 };
+  itimerspec spec_beacon = { 0 };
+  nsec2timespec(&spec_beacon.it_value, full_frame_nsec + beacon_delay);
   ccall(pred_zero, "set time failed", timer_settime, timer_beacon, 0,
         &spec_beacon, nullptr);
   // Allocate some buffers
@@ -117,20 +122,37 @@ void run(args arg, int fd) {
         sizeof(own_address));
   timespec current = { 0 };
   uint32_t frame_no = 0;
-  uint32_t beacon_delay = MSEC_TO_NSEC(BEACON_WINDOW + SECURITY_TIME1);
+  uint32_t recv_frame_no = 0;
+  uint64_t frame_start_time = 0;
   // Handle signals
   bool run = true;
   siginfo_t info = { 0 };
   int signal = 0;
+  state_t state = state_t::BEACON;
+  auto update_slot_timer = [&]() {
+    spec_slot = { 0 };
+    uint64_t timeoffset = timespec2nsec(&current) - beacon_delay
+                          - MSEC_TO_NSEC((frame_no * FULL_FRAME));
+    if (timeoffset < frame_start_time || frame_start_time == 0) {
+      frame_start_time = timeoffset;
+    }
+    nsec2timespec(&spec_slot.it_value, frame_start_time
+                  + MSEC_TO_NSEC(frame_no * FULL_FRAME + BEACON_WINDOW
+                  + SECURITY_TIME1 + arg.m_slot * SLOT_TIME));
+    ccall(pred_zero, "set time failed", timer_settime, timer_slot,
+          TIMER_ABSTIME, &spec_slot, nullptr);
+    state = state_t::SLOT;
+  };
   while (run) {
     signal = 0;
     memset(&info, 0, sizeof(siginfo_t));
     memset(recv_buffer, 0, RECV_BUFFER_SIZE);
+    memset(send_buffer, 0, SEND_BUFFER_SIZE);
     // SIGIO is edge sensitive, we have to ensure that the receive
     // buffer is already empty, or we will loose a signal
     while (signal == 0) {
       int err = recvMessage(fd, recv_buffer, RECV_BUFFER_SIZE, &source_addr,
-                  &source_port);
+                            &source_port);
       if (err > 0) {
         signal = SIGIO;
         break;
@@ -146,27 +168,53 @@ void run(args arg, int fd) {
     ccall(pred_zero, "clock_gettime failed", clock_gettime, CLOCK_MONOTONIC,
           &current);
     switch (info.si_signo) {
-      case SIGINT: // CTRL + C (Exit program)
+      case SIGINT: { // CTRL + C (Exit program)
         cout << endl; // just for a cleaner output...
         run = false;
         return;
-      break;
-      case SIGIO: // New IO from socket
+      } break;
+      case SIGIO: { // New IO from socket
         cout << recv_buffer << endl;
         if (recv_buffer[0] == 'B') {
-          // Received a Beacon message
+          decodeBeacon(recv_buffer, &recv_frame_no, &beacon_delay, source_addr,
+                       sizeof(source_addr));
+          if (recv_frame_no != frame_no) {
+            frame_no = recv_frame_no;
+            update_slot_timer();
+          }
         } else if (recv_buffer[0] == 'D') {
           // Received a slot message
         } else {
           // nop
         }
-      break;
-      case SIGUSR1: // Timer invoked SIGUST1 (Time to send in our slot)
-      break;
-      case SIGALRM: // Timer invoked SIGALRM (Time to send the beacon)
-        encodeBeacon(send_buffer, SEND_BUFFER_SIZE, frame_no++, beacon_delay, own_address);
-        sendMessage(fd, send_buffer, arg.m_host.c_str(), arg.m_port);
-      break;
+      } break;
+      case SIGUSR1: { // Timer invoked SIGUST1 (Time to send in our slot)
+        cout << "SIGUSR1" << endl;
+        if (state == state_t::SLOT) {
+          encodeSlotMessage(send_buffer, SEND_BUFFER_SIZE, arg.m_slot,
+                            own_address);
+          sendMessage(fd, send_buffer, arg.m_host.c_str(), arg.m_port);
+          // Generate new beacon time
+          beacon_delay = randomNumber(MSEC_TO_NSEC(BEACON_WINDOW));
+          spec_beacon = { 0 };
+          nsec2timespec(&spec_beacon.it_value, frame_start_time +
+                        MSEC_TO_NSEC((frame_no * FULL_FRAME) + FULL_FRAME)
+                        + beacon_delay);
+          ccall(pred_zero, "set time failed", timer_settime, timer_beacon,
+                TIMER_ABSTIME, &spec_beacon, nullptr);
+          state = state_t::BEACON;
+        }
+      } break;
+      case SIGALRM: { // Timer invoked SIGALRM (Time to send the beacon)
+        cout << "SIGALRM" << endl;
+        if (state == state_t::BEACON) {
+          // no beacon received, we can send our beacon...
+          encodeBeacon(send_buffer, SEND_BUFFER_SIZE, frame_no++, beacon_delay,
+                       own_address);
+          sendMessage(fd, send_buffer, arg.m_host.c_str(), arg.m_port);
+          update_slot_timer();
+        }
+      } break;
     }
   }
 }
