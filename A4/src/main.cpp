@@ -83,27 +83,35 @@ void run(args arg, int fd) {
   char send_buffer[SEND_BUFFER_SIZE] = { 0 };
   char* source_addr = nullptr;
   int   source_port = 0;
+  char own_address[128] = { 0 };
+  err = gethostname(own_address, sizeof(own_address));
+  cout << "Hostname: " << own_address << ":" << arg.m_port << endl;
   timespec current = { 0 };
   // Handle signals
   bool run = true;
   siginfo_t info = { 0 };
+  int signal = 0;
   while (run) {
+    signal = 0;
     // SIGIO is edge sensitive, we have to ensure that the receive
     // buffer is already empty, or we will loose a signal
-    do {
+    while (signal == 0) {
       err = recvMessage(fd, recv_buffer, RECV_BUFFER_SIZE, &source_addr,
                         &source_port);
-      info.si_signo = SIGIO;
-    } while (err > 0);
-    if (err == 0) {
-      // Only wait if there was no data read
-      // if err != 0, that means we received data. No need to block
-      // on one of the signals...
+      if (err > 0) {
+        signal = SIGIO;
+        break;
+      }
       sigwaitinfo(&sigset, &info);
+      if (  info.si_signo == SIGINT || info.si_signo == SIGUSR1
+         || info.si_signo == SIGALRM) {
+        signal = info.si_signo;
+        break;
+      }
     }
     // Get current time...
-    clock_gettime(CLOCK_MONOTONIC, &current);
-    cout << "sec: " << current.tv_sec << " nsec: " << current.tv_nsec << endl;
+    //clock_gettime(CLOCK_MONOTONIC, &current);
+    //cout << "sec: " << current.tv_sec << " nsec: " << current.tv_nsec << endl;
     switch (info.si_signo) {
       case SIGINT:
         // Break life loop, this will cause the program to terminate
@@ -111,13 +119,28 @@ void run(args arg, int fd) {
         return;
       break;
       case SIGIO:
+        recvMessage(fd, recv_buffer, RECV_BUFFER_SIZE, &source_addr, &source_port);
         // New IO from socket
+        if (recv_buffer[0] == 'B') {
+          // Received a Beacon message
+          cout << "received a beacon messgae" << endl << recv_buffer << endl;
+        } else if (recv_buffer[0] == 'D') {
+          // Received a slot message
+          cout << "received a slot message" << endl << recv_buffer << endl;
+        } else {
+          // nop
+          cout << "Unknown begin of message" << endl << recv_buffer << endl;
+        }
       break;
       case SIGUSR1:
         // Timer invoked SIGUSR1 => Time to send in our slot
       break;
       case SIGALRM:
         // Timer invoked SIGALRM => Time to send Beacon
+        clock_gettime(CLOCK_MONOTONIC, &current);
+        // int sendMessage( int fd, const char* message, const char* mcastAdr, int port ){
+        send_buffer[0] = 'B';
+        cout << sendMessage(fd, send_buffer, own_address, arg.m_port) << endl;
       break;
     }
   }
@@ -130,6 +153,7 @@ int main(int argc, char* argv[]) {
     cout << "Error initializing socket... exit..." << endl;
     return 1;
   }
+  cout << "fd: " << fd << endl;
   auto fd_guard = make_guard(close, fd);
   run(resu, fd);
   cout << "\nAbout to leave main..." << endl;

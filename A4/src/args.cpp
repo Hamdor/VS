@@ -46,17 +46,17 @@ const struct option options[] = {
 } // namespace <anonymous>
 
 void arg_parser::print_help() {
-  cout << "Usage: ./a4 [Options]"                                      << endl
-       << "Options:"                                                   << endl
-       << "  --host=<arg>  Set the multicast address (def: 224.0.0.1)" << endl
-       << "  --port=<arg>  Set the port (def: 1337)"                   << endl
-       << "  --slot=<arg>  Set the slot to send on (1 - 16) (def: 1)"  << endl
-       << "  --beacon      Indicates send beacon (def: false)"         << endl
-       << "  --help        Show this help message"                     << endl;
+  cout << "Usage: ./a4 [Options]"                                       << endl
+       << "Options:"                                                    << endl
+       << "  --host=<arg> Set the multicast address (def: 224.0.0.251)" << endl
+       << "  --port=<arg> Set the port (def: 1337)"                     << endl
+       << "  --slot=<arg> Set the slot to send on (1 - 16) (def: 1)"    << endl
+       << "  --beacon     Indicates send beacon (def: false)"           << endl
+       << "  --help       Show this help message"                       << endl;
 }
 
 args arg_parser::parse_args(int argc, char* argv[]) {
-  args res = { "224.0.0.1", 1337, 1, false };
+  args res = { "224.0.0.251", 1337, 1, false };
   int opt = 0;
   int idx = 0;
   auto get_range = [&](auto lower, auto upper) {
