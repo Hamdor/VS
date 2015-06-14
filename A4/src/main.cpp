@@ -20,8 +20,10 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 
+#include <sstream>
 #include <cstring>
 #include <iostream>
+#include <stdexcept>
 
 #include "args.hpp"
 #include "datagram.h"
@@ -54,39 +56,68 @@ static_assert(full_frame_nsec > full_frame_msec, "overflow in time specification
 
 } // namespace <anonymous>
 
+bool pred_zero(int value) {
+  return value == 0;
+}
+
+bool pred_not_zero(int value) {
+  return !pred_zero(value);
+}
+
+// Error checking for C calls...
+template <class Predicate, class F, class... Ts>
+auto ccall(Predicate p, const char* errmsg, F f, Ts&&... xs) {
+  auto result = f(std::forward<Ts>(xs)...);
+  if (!p(result)) {
+    std::ostringstream oss;
+    oss << errmsg << ": " << result;
+    throw runtime_error(oss.str());
+  }
+  return result;
+}
+
 void run(args arg, int fd) {
-  int err = 0; // TODO: Add error checking and return...
-  auto specific_sig = (arg.m_beacon ? SIGALRM : SIGUSR1);
-  // Initialize sigev for later timer usage
-  sigevent sigev;
-  sigev.sigev_notify   = SIGEV_THREAD_ID | SIGEV_SIGNAL;
-  sigev.sigev_signo    = specific_sig;
-  sigev._sigev_un._tid = syscall(__NR_gettid); // sadly, there seems to be no
-                                               // C++ function which gives us
-                                               // the thread id as int...
+  // Error checking
+  auto init_sigev = [](auto signal) {
+    sigevent sig = { 0 };
+    sig.sigev_notify   = SIGEV_THREAD_ID | SIGEV_SIGNAL;
+    sig.sigev_signo    = signal;
+    sig._sigev_un._tid = syscall(__NR_gettid);
+    return sig;
+  };
+  sigevent sigev_slot   = init_sigev(SIGUSR1); // Init sigevent for slot
+  sigevent sigev_beacon = init_sigev(SIGALRM); // Init sigevent for beacon
   // Initalize sigset
-  sigset_t sigset;
-  sigemptyset(&sigset);
-  sigaddset(&sigset, SIGINT);       // Signal triggered from CTRL + C
-  sigaddset(&sigset, SIGIO);        // Socket received data
-  sigaddset(&sigset, specific_sig); // Specific SIG (SIGALARM or SIGUSR1)
-  sigprocmask(SIG_BLOCK, &sigset, NULL);
+  sigset_t sigset = { 0 };
+  ccall(pred_zero, "add SIGINT failed",  sigaddset, &sigset, SIGINT);
+  ccall(pred_zero, "add SIGIO failed",   sigaddset, &sigset, SIGIO);
+  ccall(pred_zero, "add SIGALRM failed", sigaddset, &sigset, SIGALRM);
+  ccall(pred_zero, "add SIGUSR1 failed", sigaddset, &sigset, SIGUSR1);
+  ccall(pred_zero, "set SIG_BLOCK", sigprocmask, SIG_BLOCK, &sigset,
+        nullptr);
   // Initialize Linux's HRT Timer
-  timer_t timer;
-  err = timer_create(CLOCK_MONOTONIC, &sigev, &timer);
-  auto timer_guard = make_guard(timer_delete, timer);
+  timer_t timer_beacon;
+  timer_t timer_slot;
+  ccall(pred_zero, "Init timer_beacon failed", timer_create,
+        CLOCK_MONOTONIC, &sigev_beacon, &timer_beacon);
+  auto timer_guard_beacon = make_guard(timer_delete, timer_beacon);
+  ccall(pred_zero, "Init timer_slot failed", timer_create, CLOCK_MONOTONIC,
+        &sigev_slot, &timer_slot);
+  auto timer_guard_slot = make_guard(timer_delete, timer_slot);
   // Set time TODO: Set correct time
-  itimerspec spec = { 0, full_frame_nsec, 0, full_frame_nsec };
-  timer_settime(timer, 0, &spec, nullptr);
+  itimerspec spec_beacon = { 0, full_frame_nsec, 0, full_frame_nsec };
+  ccall(pred_zero, "set time failed", timer_settime, timer_beacon, 0,
+        &spec_beacon, nullptr);
   // Allocate some buffers
   char recv_buffer[RECV_BUFFER_SIZE] = { 0 };
   char send_buffer[SEND_BUFFER_SIZE] = { 0 };
   char* source_addr = nullptr;
   int   source_port = 0;
   char own_address[128] = { 0 };
-  err = gethostname(own_address, sizeof(own_address));
-  cout << "Hostname: " << own_address << ":" << arg.m_port << endl;
+  gethostname(own_address, sizeof(own_address));
   timespec current = { 0 };
+  uint32_t frame_no = 0;
+  uint32_t beacon_delay = MSEC_TO_NSEC(BEACON_WINDOW + SECURITY_TIME1);
   // Handle signals
   bool run = true;
   siginfo_t info = { 0 };
@@ -94,11 +125,12 @@ void run(args arg, int fd) {
   while (run) {
     signal = 0;
     memset(&info, 0, sizeof(siginfo_t));
+    memset(&info, 0, RECV_BUFFER_SIZE);
     // SIGIO is edge sensitive, we have to ensure that the receive
     // buffer is already empty, or we will loose a signal
     while (signal == 0) {
-      err = recvMessage(fd, recv_buffer, RECV_BUFFER_SIZE, &source_addr,
-                        &source_port);
+      int err = recvMessage(fd, recv_buffer, RECV_BUFFER_SIZE, &source_addr,
+                  &source_port);
       if (err > 0) {
         signal = SIGIO;
         break;
@@ -111,34 +143,28 @@ void run(args arg, int fd) {
       }
     }
     // Get current time...
+    clock_gettime(CLOCK_MONOTONIC, &current);
     switch (info.si_signo) {
-      case SIGINT:
-        // Break life loop, this will cause the program to terminate
+      case SIGINT: // CTRL + C (Exit program)
+        cout << endl; // just for a cleaner output...
         run = false;
         return;
       break;
-      case SIGIO:
-        cout << "source: " << source_addr << ":" << source_port << endl;
-        // New IO from socket
+      case SIGIO: // New IO from socket
+        cout << recv_buffer << endl;
         if (recv_buffer[0] == 'B') {
           // Received a Beacon message
-          cout << "received a beacon messgae" << endl << recv_buffer << endl;
         } else if (recv_buffer[0] == 'D') {
           // Received a slot message
-          cout << "received a slot message" << endl << recv_buffer << endl;
         } else {
           // nop
-          cout << "Unknown begin of message" << endl << recv_buffer << endl;
         }
       break;
-      case SIGUSR1:
-        // Timer invoked SIGUSR1 => Time to send in our slot
+      case SIGUSR1: // Timer invoked SIGUST1 (Time to send in our slot)
       break;
-      case SIGALRM:
-        // Timer invoked SIGALRM => Time to send Beacon
-        clock_gettime(CLOCK_MONOTONIC, &current);
-        send_buffer[0] = 'B';
-        cout << sendMessage(fd, send_buffer, arg.m_host.c_str(), arg.m_port) << endl;
+      case SIGALRM: // Timer invoked SIGALRM (Time to send the beacon)
+        encodeBeacon(send_buffer, SEND_BUFFER_SIZE, frame_no++, beacon_delay, own_address);
+        sendMessage(fd, send_buffer, arg.m_host.c_str(), arg.m_port);
       break;
     }
   }
@@ -151,9 +177,12 @@ int main(int argc, char* argv[]) {
     cout << "Error initializing socket... exit..." << endl;
     return 1;
   }
-  cout << "fd: " << fd << endl;
   auto fd_guard = make_guard(close, fd);
-  run(resu, fd);
-  cout << "\nAbout to leave main..." << endl;
+  try {
+    run(resu, fd);
+  } catch(exception& e) {
+    cout << e.what() << endl;
+  }
+  cout << "About to leave " << __PRETTY_FUNCTION__ << "..." << endl;
 }
 

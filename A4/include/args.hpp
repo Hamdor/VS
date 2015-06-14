@@ -24,7 +24,6 @@ struct args {
   std::string m_host;
   uint16_t    m_port;
   uint8_t     m_slot;
-  bool        m_beacon;
 };
 
 struct arg_parser {
