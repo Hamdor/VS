@@ -93,6 +93,7 @@ void run(args arg, int fd) {
   int signal = 0;
   while (run) {
     signal = 0;
+    memset(&info, 0, sizeof(siginfo_t));
     // SIGIO is edge sensitive, we have to ensure that the receive
     // buffer is already empty, or we will loose a signal
     while (signal == 0) {
@@ -110,8 +111,6 @@ void run(args arg, int fd) {
       }
     }
     // Get current time...
-    //clock_gettime(CLOCK_MONOTONIC, &current);
-    //cout << "sec: " << current.tv_sec << " nsec: " << current.tv_nsec << endl;
     switch (info.si_signo) {
       case SIGINT:
         // Break life loop, this will cause the program to terminate
@@ -119,7 +118,7 @@ void run(args arg, int fd) {
         return;
       break;
       case SIGIO:
-        recvMessage(fd, recv_buffer, RECV_BUFFER_SIZE, &source_addr, &source_port);
+        cout << "source: " << source_addr << ":" << source_port << endl;
         // New IO from socket
         if (recv_buffer[0] == 'B') {
           // Received a Beacon message
@@ -138,9 +137,8 @@ void run(args arg, int fd) {
       case SIGALRM:
         // Timer invoked SIGALRM => Time to send Beacon
         clock_gettime(CLOCK_MONOTONIC, &current);
-        // int sendMessage( int fd, const char* message, const char* mcastAdr, int port ){
         send_buffer[0] = 'B';
-        cout << sendMessage(fd, send_buffer, own_address, arg.m_port) << endl;
+        cout << sendMessage(fd, send_buffer, arg.m_host.c_str(), arg.m_port) << endl;
       break;
     }
   }
