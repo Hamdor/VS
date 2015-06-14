@@ -174,14 +174,13 @@ void run(args arg, int fd) {
         return;
       } break;
       case SIGIO: { // New IO from socket
-        cout << recv_buffer << endl;
         if (recv_buffer[0] == 'B') {
           decodeBeacon(recv_buffer, &recv_frame_no, &beacon_delay, source_addr,
                        sizeof(source_addr));
-          if (recv_frame_no != frame_no) {
+          //if (recv_frame_no != frame_no) {
             frame_no = recv_frame_no;
             update_slot_timer();
-          }
+          //}
         } else if (recv_buffer[0] == 'D') {
           // Received a slot message
         } else {
@@ -189,7 +188,6 @@ void run(args arg, int fd) {
         }
       } break;
       case SIGUSR1: { // Timer invoked SIGUST1 (Time to send in our slot)
-        cout << "SIGUSR1" << endl;
         if (state == state_t::SLOT) {
           encodeSlotMessage(send_buffer, SEND_BUFFER_SIZE, arg.m_slot,
                             own_address);
@@ -206,7 +204,6 @@ void run(args arg, int fd) {
         }
       } break;
       case SIGALRM: { // Timer invoked SIGALRM (Time to send the beacon)
-        cout << "SIGALRM" << endl;
         if (state == state_t::BEACON) {
           // no beacon received, we can send our beacon...
           encodeBeacon(send_buffer, SEND_BUFFER_SIZE, frame_no++, beacon_delay,
