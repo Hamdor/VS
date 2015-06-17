@@ -59,7 +59,8 @@ public class main_starter {
         System.exit(0);
       }
     }
-    // Check input
+    // Check input //other URL can be empty if there is no one there yet
+    // in that case the started sensor is the first sensor and therefore the coordinator 
     if (own_url.isEmpty() || own_port.isEmpty() || other_url.isEmpty()) {
       print_help_message();
       System.exit(-1);
