@@ -82,6 +82,8 @@ public class coordinatorImpl extends CoordinatorPOA {
     }
   }
   
+  private ArrayList<Integer> m_values = new ArrayList<Integer>();
+  
   @Override
   public synchronized void inform(String whom, int seqNr, boolean finished,
                                   int current) {
@@ -89,6 +91,8 @@ public class coordinatorImpl extends CoordinatorPOA {
                                            "coordinatorImpl", "inform", "");
     if (!finished || seqNr != m_seq_counter) {
       return;
+    } else {
+      m_values.add(current);
     }
     // if we got this message, this means the worker has finished...
     for (int i = 0; i < m_running_workers.length; ++i) {
@@ -104,6 +108,13 @@ public class coordinatorImpl extends CoordinatorPOA {
       }
     }
     if (count == 0) {
+      int value = m_values.get(0);
+      for (int val : m_values) {
+        if (val != value) {
+          return;
+        }
+      }
+      
       NamingContextExt nc = main_starter.main_starter.get_naming_context();
       m_timer.cancel();
       m_timer.purge();
@@ -268,6 +279,7 @@ public class coordinatorImpl extends CoordinatorPOA {
                 .get_naming_context().resolve_str(kickoff_at);
             Worker w = WorkerHelper.narrow(obj);
             m_seq_counter++;
+            m_values = new ArrayList<Integer>();
             w.snapshot(m_name, m_seq_counter);
           } catch (NotFound | CannotProceed | InvalidName e) {
             e.printStackTrace();

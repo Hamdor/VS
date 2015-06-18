@@ -95,8 +95,6 @@ public class workerImpl extends WorkerPOA {
           if (m_currentValue == 0) {
             // Get first value...
             m_currentValue = cur_calc.value();
-//            m_leftneighbor.shareResult(m_name, m_currentValue);
-//            m_rightneighbor.shareResult(m_name, m_currentValue);
             if (m_is_starter) {
               m_leftneighbor.shareResult(m_name, m_currentValue);
               m_rightneighbor.shareResult(m_name, m_currentValue);
@@ -114,7 +112,6 @@ public class workerImpl extends WorkerPOA {
             m_leftneighbor.shareResult(m_name, m_currentValue);
             m_rightneighbor.shareResult(m_name, m_currentValue);
           }
-          //m_monitor.rechnen(m_name, cur_calc.sender(), cur_calc.value());
         }
       }
       m_monitor.ergebnis(m_name, m_currentValue);
