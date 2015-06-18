@@ -3,6 +3,9 @@ package hawsensor;
 import java.net.MalformedURLException;
 import java.net.URL;
 
+import sensorproxy.BooleanArray;
+import sensorproxy.ObjectFactory;
+
 public class main_starter {
   private static void print_help_message() {
     StringBuilder str = new StringBuilder();
@@ -28,10 +31,7 @@ public class main_starter {
     String own_url = "";
     String own_port = "";
     String other_url = "";
-    boolean aquire_north = false;
-    boolean aquire_east = false;
-    boolean aquire_south = false;
-    boolean aquire_west = false;
+    boolean displays[] = new boolean[4];
     for (int i = 0; i < args.length; ++i) {
       if (args[i].contains("--url=")) {
         own_url = read_argument(args[i]);
@@ -43,16 +43,16 @@ public class main_starter {
         other_url = read_argument(args[i]);
       }
       if (args[i].contains("--north")) {
-        aquire_north = true;
+        displays[0] = true;
       }
       if (args[i].contains("--east")) {
-        aquire_east = true;
+        displays[1] = true;
       }
       if (args[i].contains("--south")) {
-        aquire_south = true;
+        displays[2] = true;
       }
       if (args[i].contains("--west")) {
-        aquire_west = true;
+        displays[3] = true;
       }
       if (args[i].contains("--help")) {
         print_help_message();
@@ -61,18 +61,57 @@ public class main_starter {
     }
     // Check input //other URL can be empty if there is no one there yet
     // in that case the started sensor is the first sensor and therefore the coordinator 
-    if (own_url.isEmpty() || own_port.isEmpty() || other_url.isEmpty()) {
+    if (own_url.isEmpty() || own_port.isEmpty()) {
       print_help_message();
       System.exit(-1);
     }
-    if (!aquire_north && !aquire_east && !aquire_south && !aquire_west) {
+    if (!displays[0] && !displays[1] && !displays[2] && !displays[3]) {
       // No view specified... exit...
       print_help_message();
       System.out.println("No view specified...");
       System.exit(-2);
     }
     try {
-      sensor instance = new sensor(new URL(own_url + ":" + own_port + "/"));
+      URL url = new URL(own_url + ":" + own_port + "/");
+      sensor instance = new sensor(url);
+      if (other_url.isEmpty()) {
+        // We are the coordinator
+        instance.m_is_coordinator = true; // :-)
+        instance.register(url, displays);
+      } else {
+        // Get the other coordinator
+        ObjectFactory factory = new ObjectFactory();
+        BooleanArray display_array = factory.createBooleanArray();
+        int try_ = 0;
+        for (; try_ < 5; ++try_) {
+          try {
+            String coordinator_str =
+                instance.resolve_sensor(new URL(other_url)).getCoordinator();
+            for (int i = 0; i < displays.length; ++i) {
+              display_array.getItem().add(displays[i]);
+            }
+            if (instance.resolve_sensor(
+                new URL(coordinator_str)).register(url.toString(), display_array)) {
+              break; // YAY
+            } else {
+              System.out.println("No free slots... Exit...");
+              System.exit(-3);
+            }
+          } catch (Exception err) {
+            // Nop...
+            try {
+              Thread.sleep(500);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+        }
+        if (try_ == 5) {
+          System.out.println("Request timeout (REGISTER) ... Exit...");
+          System.exit(-4);
+        }
+      }
+      instance.initial_view_setup();
       instance.run();
     } catch (MalformedURLException e) {
       e.printStackTrace();

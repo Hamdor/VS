@@ -26,22 +26,6 @@ public interface Sensor {
 
     /**
      * 
-     * @param myself
-     * @param displays
-     * @return
-     *     returns sensorproxy.BooleanArray
-     */
-    @WebMethod
-    @WebResult(partName = "return")
-    @Action(input = "http://hawsensor/sensor/registerRequest", output = "http://hawsensor/sensor/registerResponse")
-    public BooleanArray register(
-        @WebParam(name = "myself", partName = "myself")
-        String myself,
-        @WebParam(name = "displays", partName = "displays")
-        BooleanArray displays);
-
-    /**
-     * 
      * @return
      *     returns java.lang.String
      */
@@ -61,27 +45,14 @@ public interface Sensor {
      * 
      * @param knownSensors
      * @param coordinatorUrl
-     * @param assignedViews
      */
     @WebMethod
     @Action(input = "http://hawsensor/sensor/sendDataUpdateRequest", output = "http://hawsensor/sensor/sendDataUpdateResponse")
     public void sendDataUpdate(
         @WebParam(name = "known_sensors", partName = "known_sensors")
         AnyURIArray knownSensors,
-        @WebParam(name = "assigned_views", partName = "assigned_views")
-        AnyURIArray assignedViews,
         @WebParam(name = "coordinator_url", partName = "coordinator_url")
         String coordinatorUrl);
-
-    /**
-     * 
-     * @param display
-     */
-    @WebMethod
-    @Action(input = "http://hawsensor/sensor/removePermissionRequest", output = "http://hawsensor/sensor/removePermissionResponse")
-    public void removePermission(
-        @WebParam(name = "display", partName = "display")
-        int display);
 
     /**
      * 
@@ -94,6 +65,22 @@ public interface Sensor {
     @Action(input = "http://hawsensor/sensor/voteRequest", output = "http://hawsensor/sensor/voteResponse")
     public boolean vote(
         @WebParam(name = "value", partName = "value")
-        long value);
+        String value);
+
+    /**
+     * 
+     * @param myself
+     * @param displays
+     * @return
+     *     returns boolean
+     */
+    @WebMethod
+    @WebResult(partName = "return")
+    @Action(input = "http://hawsensor/sensor/registerRequest", output = "http://hawsensor/sensor/registerResponse")
+    public boolean register(
+        @WebParam(name = "myself", partName = "myself")
+        String myself,
+        @WebParam(name = "displays", partName = "displays")
+        BooleanArray displays);
 
 }

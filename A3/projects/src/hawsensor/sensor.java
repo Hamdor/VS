@@ -1,8 +1,10 @@
 package hawsensor;
 
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Date;
 import java.util.Timer;
-import java.util.concurrent.Semaphore;
+import java.util.TimerTask;
 
 import javax.jws.WebMethod;
 import javax.jws.WebParam;
@@ -12,105 +14,129 @@ import javax.jws.soap.SOAPBinding.Style;
 import javax.xml.namespace.QName;
 import javax.xml.ws.Endpoint;
 
+import sensorproxy.AnyURIArray;
+import sensorproxy.ObjectFactory;
+import sensorproxy.Sensor;
+import sensorproxy.SensorService;
 import hawmeterproxy.HAWMeteringWebservice;
+import hawmeterproxy.HAWMeteringWebserviceService;
+
+/**
+ * TODO:
+ * + Permissions müssen korrekt gesetzt werden (im moment wird auf allen views geschrieben)
+ * + Testen obs mit mehreren geht
+ * + Wahlverfahren testen...
+ * (+ Code aufräumen...) 
+ **/
 
 @WebService
 @SOAPBinding(style = Style.RPC)
 public class sensor {
   private URL m_url;
-  // TODO: We should store this as URL first
-  // when we have a working version we can change this
-  // to arrays over sensorProxys.
-  /*
-   * m_others and m_assigned views should always contain the same values why
-   * have two arrays ?
-   */
-  private URL[] m_others;
-  private URL[] m_assigned_views;
   private URL m_coordinator;
+  private URL[] m_others;
   private HAWMeteringWebservice[] m_views; // TODO: is this correct? Or should
-  private volatile boolean running; // this be the proxy?
-  private Timer m_timer;
-  private Semaphore m_sema;
-  private boolean m_is_coordinator;
-  private double m_currentValue; // last Value Computed by the Sensor
+  private volatile boolean running;
+  private Timer m_timer_timeout;
+  private Timer m_timer_coordinator;
+  public boolean m_is_coordinator;
+  private int m_currentValue; // last Value Computed by the Sensor
+  
+  private boolean m_got_tick;
 
+  private ObjectFactory m_factory;
+  
+  private final long TICK_RATE_MSEC = 1000;
+  private final long TICK_RATE_COORDI_MSEC = 250;
+
+  private HAWMeteringWebservice get_view_ref(String url) throws MalformedURLException {
+    // http://localhost:9999/hawmetering/no\?WSDL
+    HAWMeteringWebserviceService service = new HAWMeteringWebserviceService(new URL(HAWMeteringWebserviceService.class.getResource("."),url), new QName(
+        "http://hawmetering/", "HAWMeteringWebserviceService"));
+    return service.getHAWMeteringWebservicePort();
+  }
+  
   public sensor(final URL sensorUrl) {
     m_url = sensorUrl;
     m_others = new URL[4];
-    m_assigned_views = new URL[4];
     m_coordinator = null;
     m_views = new HAWMeteringWebservice[4];
-    m_timer = new Timer(); // TODO: Initialize with correct functions
-    m_sema = new Semaphore(0);
+    try {
+      m_views[0] = get_view_ref("http://localhost:9999/hawmetering/nw");
+      m_views[1] = get_view_ref("http://localhost:9999/hawmetering/no");
+      m_views[2] = get_view_ref("http://localhost:9999/hawmetering/sw");
+      m_views[3] = get_view_ref("http://localhost:9999/hawmetering/so");
+    } catch(Exception err) {
+      System.err.println("Invalid URL for view..." + err.getMessage());
+      System.exit(-5);
+    }
+    
+    m_timer_timeout = new Timer();
+    m_timer_timeout.scheduleAtFixedRate(new TimerTask() {
+      @Override
+      public void run() {
+        if (!m_got_tick) {
+          vote(m_url);
+        }
+        m_got_tick = false;
+      }
+    }, TICK_RATE_MSEC, TICK_RATE_MSEC);
+    m_timer_coordinator = new Timer();
+    m_timer_coordinator.scheduleAtFixedRate(new TimerTask() {
+      @Override
+      public void run() {
+        System.out.println("m_timer_coordinator run()");
+        if (m_is_coordinator) {
+          System.out.println("m_timer_coordinator m_is_coordinator");
+          boolean refresh_data = false;
+          for (int i = 0; i < m_others.length; ++i) {
+            try {
+              if (m_others[i] != null) {
+                resolve_sensor(m_others[i]).signalUpdate();
+              }
+            } catch (Exception err) {
+              System.out.println(err.getMessage());
+              refresh_data = true;
+              m_others[i]= null;
+            }
+          }
+          if (refresh_data) {
+            doSendDataUpdate();
+          }
+        }
+      }
+    }, TICK_RATE_COORDI_MSEC, TICK_RATE_COORDI_MSEC); // TODO: Start only at full second...
     m_is_coordinator = false;
     m_currentValue = 0;
+    m_factory = new ObjectFactory();
     // Publish web service
     Endpoint.publish(m_url.toString(), this);
   }
+  
+  private boolean initialized = false;
+  public void initial_view_setup() {
+    if (!initialized) {
+      // TODO: Initialize view values (interval...)...
+      initialized = true;
+    }
+  }
+
+  Sensor resolve_sensor(URL url) {
+    SensorService service = new SensorService(url, new QName(
+        "http://hawsensor/", "sensorService"));
+    return service.getSensorPort();
+  }
 
   void run() {
-    boolean vote_result;
-    boolean sent;
-    int x = 1000;// sleep time until we notice the missing
-    try {
-      m_sema.acquire();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
     running = true;
     while (running) {
-
-      sent = false;
-      // TODO wait for the coordinator to give the send command
-
-      if (sent == false) {// coordinator did not make us send stuff try to ping
-                          // the coordinator if it doesnt react
-        try {
-          // m_coordinator.getCoordinator(); // how to use url to reach other
-          // sensor ?
-        } catch (Exception e) {
-          vote_result = true;
-          // coordinator does not react initiate vote
-          // kann ich vote auch bei mir seobst aufrufen ?
-       
-          for (int i = 0; i < m_assigned_views.length; i++) {
-            try {
-              // if( m_assigned_views[i].vote(m_url)){ vote_result = false; } //
-              // how to use url to reach other sensor ?
-            } catch (Exception e2) {// other member is not reachable --> is dead
-              continue;
-            }
-          }
-          if (vote_result) {// this sensor won the election
-            this.m_coordinator = m_url;
-            m_is_coordinator = true;
-            // reach all other sensors and refresh the list
-            for (int i = 0; i < m_assigned_views.length; i++) {
-              try {
-                // m_assigned_views[i].getCoordinator()
-                // how to use url to reach other sensor ?
-                m_others[i]= m_assigned_views[i];
-              } catch (Exception e3) {// other member is not reachable --> is dead
-                m_others[i] = null;
-                m_assigned_views[i] = null;
-                continue;
-              }
-            }
-            for (int i = 0; i < m_assigned_views.length; i++) {
-              if(m_assigned_views[i]!=null){
-                //m_assigned_views[i].sendDataUpdate(m_others,m_assigned_views,m_coordinator);
-              }
-            }
-          }else{
-            m_is_coordinator = false;
-          }
-        }
-
+      // TODO: Check if this is correct...
+      long lTicks = new Date().getTime();
+      m_currentValue = ((int) (lTicks % 20000)) / 100;
+      if (m_currentValue > 100) {
+        m_currentValue = 200 - m_currentValue;
       }
-
     }
-
   }
 
   /**
@@ -130,13 +156,27 @@ public class sensor {
    */
   @WebMethod
   public void signalUpdate() {
-    // all views that are not null can be given the last value
-    for (int i = 0; i < m_views.length; i++) {
+    System.out.println("signalUpdate()");
+    System.out.println(m_url);
+    m_got_tick = true;
+    for (int i = 0; i < m_views.length; ++i) {
       if (m_views[i] != null) {
         m_views[i].setValue(m_currentValue);
       }
     }
+  }
 
+  private void doSendDataUpdate() {
+    // Send updates to all other views
+    AnyURIArray other_urls = m_factory.createAnyURIArray();
+    for (URL url : m_others) {
+      if (url == null) { continue; }
+      other_urls.getItem().add(url.toString());
+    }
+    for (URL url : m_others) {
+      if (url == null || url == m_url) { continue; }
+      resolve_sensor(url).sendDataUpdate(other_urls, m_coordinator.toString());
+    }
   }
 
   /**
@@ -146,23 +186,20 @@ public class sensor {
    * 
    * @param known_sensors
    *          is an array over all known sensors the size of this array should
-   *          be 4.
-   * @param assigned_views
-   *          array over assigned views, the mapping is array[0] = North
-   *          array[1] = East array[2] = South array[3] = West
+   *          be 4. The mapping is array[0] = North array[1] = East array[2] =
+   *          South array[3] = West
    * @param coordinator_url
    *          URL of the current coordinator
    */
   @WebMethod
   public void sendDataUpdate(
       @WebParam(name = "known_sensors") URL[] known_sensors,
-      @WebParam(name = "assigned_views") URL[] assigned_views,
       @WebParam(name = "coordinator_url") URL coordinator) {
-    this.m_coordinator = coordinator;
-    for (int i = 0; i < m_assigned_views.length; i++) {
-      m_assigned_views[i] = assigned_views[i];
-
+    m_coordinator = coordinator;
+    for (int i = 0; i < m_others.length; i++) {
+      m_others[i] = known_sensors[i];
     }
+    m_is_coordinator = (m_coordinator == m_url);
   }
 
   /**
@@ -183,10 +220,10 @@ public class sensor {
    */
   // return array is not really needed imho
   @WebMethod
-  public boolean[] register(@WebParam(name = "myself") URL myself,
+  public boolean register(@WebParam(name = "myself") URL myself,
       @WebParam(name = "displays") boolean[] displays) {
     if (!m_is_coordinator) {
-      return null;
+      return false;
     }
     // dont know whether this is needed
     // Find free slot for sensor
@@ -198,82 +235,72 @@ public class sensor {
       }
     }
     if (free_idx == -1) {
-      // TODO: Check if there are some sensors with multiple views
-      // if so, revoke write permissions for them and assign write
-      // permission to the new sensor.
-      // No free slots, revoke request
-      // NO!!
-      // Hat der neue Sensor den aktuellen Koordinator gefunden, teilt er ihn
-      // mit, welche Anzeigen er benutzen m�chte. Falls die Anzeigen alle frei
-      // sind kann der Sensor sich bei dem Koordinator registrieren
-      return new boolean[] { false, false, false, false };
+      return false;
     }
     // Check if requested displays are free
-    boolean[] result = new boolean[4];
-    boolean complete = true;
-    for (int i = 0; i < m_assigned_views.length; ++i) {
-      if (m_assigned_views[i] != null && displays[i] == true) {
-        // view is occupied and requested
-        complete = false;
-        result[i] = false;
+    for (int i = 0; i < m_others.length; ++i) {
+      if (m_others[i] != null && displays[i] == true) {
+        return false;
       }
-
     }
-    if (complete) {// all requested views are available
-      for (int i = 0; i < m_assigned_views.length; ++i) {
-        if (m_assigned_views[i] == null && displays[i] == true) {
-          // view is free and requested
-          m_assigned_views[i] = myself;
-          result[i] = true;
-        }
-
+    // set real values
+    for (int i = 0; i < m_others.length; ++i) {
+      if (m_others[i] == null && displays[i] == true) {
+        // view is free and requested
+        m_others[i] = myself;
       }
-    } else {
-      return new boolean[] { false, false, false, false };
     }
     // Send updates to all other views
-    for (URL url : m_others) {
-      // TODO: Get callable proxy for url stored in `url`
-      // sendDataUpdate(m_others, m_assigned_views, m_url);
-
-    }
-    // TODO: Call update function on new registred sensor
-    // sendDataUpdate(...)
-    return result;
-
-  }
-
-  /**
-   * This function is invoked by the coordinator on a slave sensor to revoke its
-   * write permissions on a view. This is used if this sensor had multiple write
-   * permissions on views.
-   * 
-   * @param display
-   *          specifies the view. The following mapping applies 1 = North, 2 =
-   *          East, 3 = South, 4 = West
-   */
-  @WebMethod
-  public void removePermission(@WebParam(name = "display") int display) {
-    // TODO: Remove permissions to write on display (view)
+    doSendDataUpdate();
+    return true;
   }
 
   /**
    * This function is invoked by another sensor and presents a vote from the
    * caller for the callee. the callee will invoke the same function on an
    * sensor he has to vote.
+   * when this method is completed a new coordinator has been elected
+   * @ return returns true if our URL is stronger than the URL of the called one
+   *          returns false if our URL is weaker than the URL of the called one
    */
   @WebMethod
   public boolean vote(@WebParam(name = "value") URL value) {
-    // TODO: I'm not sure what this long value is for.
-    // long value should be URL represents the power of the calling sensor
-    // compare both powers to find out who is stronger
-    // if callee stronger return true and let the callee start the voting loop
-    // with all others
-    // if caller stronger return false
-    /*
-     * if (m_URL.toString().compareTo(url.toString()) > 0) { return true; } else
-     * { return false; }
-     */
-    return false;
+    if (m_url.toString().compareTo(value.toString()) >= 0) {// our URL is more
+                                                           // Powerful --> we
+                                                           // win
+      boolean winner = true;
+      // we won --> we have to start an election with everybody else to see
+      // whether we are the strongest
+      for (int i = 0; i < m_others.length; i++) {
+        try {
+          if (m_others[i] != m_url) {
+            if (resolve_sensor(m_others[i]).vote(m_url.toString())) {
+              winner = false;
+            }
+          }
+        } catch (Exception e) {
+          continue;
+        }
+      }
+      if (winner) {// we are new coordinator --> update all data
+        this.m_coordinator = m_url;
+        m_is_coordinator = true;
+        // reach all other sensors and refresh the list
+        for (int i = 0; i < m_others.length; i++) {
+          try {
+            resolve_sensor(m_others[i]).getCoordinator(); // ping others to see
+                                                          // if theyre still
+                                                          // available
+          } catch (Exception e3) {// other member is not reachable --> is dead
+            m_others[i] = null;
+            continue;
+          }
+        }
+        doSendDataUpdate();
+      }
+      return true;
+    } else {// our URL is less Powerful --> we lose
+      return false;
+    }
   }
 }
