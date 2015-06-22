@@ -20,13 +20,15 @@ import sensorproxy.Sensor;
 import sensorproxy.SensorService;
 import hawmeterproxy.HAWMeteringWebservice;
 import hawmeterproxy.HAWMeteringWebserviceService;
+import hawmeterproxy.WebColor;
 
 /**
  * TODO:
- * + Permissions müssen korrekt gesetzt werden (im moment wird auf allen views geschrieben)
+ * + Permissions müssen korrekt gesetzt werden (im moment wird auf allen views geschrieben) DONE
  * + Testen obs mit mehreren geht
  * + Wahlverfahren testen...
  * (+ Code aufräumen...) 
+ * + ranges setzen
  **/
 
 @WebService
@@ -35,7 +37,7 @@ public class sensor {
   private URL m_url;
   private URL m_coordinator;
   private URL[] m_others;
-  private HAWMeteringWebservice[] m_views; // TODO: is this correct? Or should
+  private HAWMeteringWebservice[] m_views;
   private volatile boolean running;
   private Timer m_timer_timeout;
   private Timer m_timer_coordinator;
@@ -56,16 +58,22 @@ public class sensor {
     return service.getHAWMeteringWebservicePort();
   }
   
-  public sensor(final URL sensorUrl) {
+  public sensor(final URL sensorUrl, boolean displays[]) {
     m_url = sensorUrl;
     m_others = new URL[4];
     m_coordinator = null;
+    
     m_views = new HAWMeteringWebservice[4];
     try {
-      m_views[0] = get_view_ref("http://localhost:9999/hawmetering/nw");
-      m_views[1] = get_view_ref("http://localhost:9999/hawmetering/no");
-      m_views[2] = get_view_ref("http://localhost:9999/hawmetering/sw");
-      m_views[3] = get_view_ref("http://localhost:9999/hawmetering/so");
+      for(int k = 0;k<m_views.length;k++){//initialize array
+        m_views[k]=null;
+      }
+      //fill if appropriate
+      if(displays[0])m_views[0] = get_view_ref("http://localhost:9999/hawmetering/nw");
+      if(displays[1])m_views[1] = get_view_ref("http://localhost:9999/hawmetering/no");
+      if(displays[2])m_views[2] = get_view_ref("http://localhost:9999/hawmetering/sw");
+      if(displays[3])m_views[3] = get_view_ref("http://localhost:9999/hawmetering/so");
+      
     } catch(Exception err) {
       System.err.println("Invalid URL for view..." + err.getMessage());
       System.exit(-5);
@@ -117,6 +125,26 @@ public class sensor {
   public void initial_view_setup() {
     if (!initialized) {
       // TODO: Initialize view values (interval...)...
+      for(int i = 0;i<m_views.length;i++){//& default shit maybe do something fancy
+        if(m_views[i]!=null){
+          WebColor color = new WebColor();
+          color.setRed(0);
+          color.setGreen(255);
+          color.setBlue(0);
+          color.setAlpha(255);
+          m_views[i].setIntervals("", 0, 50, color);//green
+          color.setRed(255);
+          color.setGreen(255);
+          color.setBlue(0);
+          color.setAlpha(255);
+          m_views[i].setIntervals("", 50, 75, color);//yellow
+          color.setRed(255);
+          color.setGreen(0);
+          color.setBlue(0);
+          color.setAlpha(255);
+          m_views[i].setIntervals("", 75, 100, color);//red
+        }
+      }
       initialized = true;
     }
   }

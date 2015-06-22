@@ -11,14 +11,14 @@ public class main_starter {
     StringBuilder str = new StringBuilder();
     str.append("Usage: java -cp . sensor [Options...]\n");
     str.append("Arguments:\n");
-    str.append("--url=arg     Set own url to listen on\n");
-    str.append("--port=arg    Set own port to listen on\n");
-    str.append("--other=arg   This sensor will be asked for the coordinator");
-    str.append("--north       Try to aquire north\n");
-    str.append("--east        Try to aquire east\n");
-    str.append("--south       Try to aquire south\n");
-    str.append("--west        Try to aquire west");
-    str.append("--help        Print this help message\n");
+    str.append("--url=arg      Set own url to listen on\n");
+    str.append("--port=arg     Set own port to listen on\n");
+    str.append("--other=arg    This sensor will be asked for the coordinator");
+    str.append("--north        Try to aquire north\n");
+    str.append("--east         Try to aquire east\n");
+    str.append("--south        Try to aquire south\n");
+    str.append("--west         Try to aquire west\n");
+    str.append("--help         Print this help message\n");
     System.out.println(str);
   }
 
@@ -73,7 +73,7 @@ public class main_starter {
     }
     try {
       URL url = new URL(own_url + ":" + own_port + "/");
-      sensor instance = new sensor(url);
+      sensor instance = new sensor(url,displays);
       if (other_url.isEmpty()) {
         // We are the coordinator
         instance.m_is_coordinator = true; // :-)
