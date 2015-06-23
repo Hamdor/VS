@@ -49,6 +49,7 @@ public interface Sensor {
     @WebMethod
     @Action(input = "http://hawsensor/sensor/sendDataUpdateRequest", output = "http://hawsensor/sensor/sendDataUpdateResponse")
     public void sendDataUpdate(
+        
         @WebParam(name = "known_sensors", partName = "known_sensors")
         AnyURIArray knownSensors,
         @WebParam(name = "coordinator_url", partName = "coordinator_url")
