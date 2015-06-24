@@ -32,6 +32,7 @@ import hawmeterproxy.WebColor;
 @WebService
 @SOAPBinding(style = Style.RPC)
 public class sensor {
+  private boolean[] m_viewlock;
   private URL[] m_others;
   private URL m_url;
   private URL m_coordinator;
@@ -65,7 +66,7 @@ public class sensor {
     m_used_views = new URL[4];
     m_others = new URL[4];
     m_coordinator = isCoordinator ? m_url : null;
-
+    //System.out.println("created sensor at:" + m_url);
     m_views = new HAWMeteringWebservice[4];
     try {
       for (int k = 0; k < m_views.length; k++) {// initialize array
@@ -90,33 +91,37 @@ public class sensor {
     m_timer_timeout.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {
-        if (!m_got_tick && !m_vote_running) {
-          vote(m_url);
+        if (running) {
+          if (!m_got_tick && !m_vote_running) {
+            vote(m_url);
+          }
+          m_got_tick = false;
         }
-        m_got_tick = false;
       }
     }, TICK_RATE_MSEC, TICK_RATE_MSEC);
     m_timer_coordinator = new Timer();
     m_timer_coordinator.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {
-        // System.out.println("m_timer_coordinator run()");
-        if (m_is_coordinator) {
-          // System.out.println("m_timer_coordinator m_is_coordinator");
-          boolean refresh_data = false;
-          for (int i = 0; i < m_used_views.length; ++i) {
-            try {
-              if (m_used_views[i] != null) {
-                resolve_sensor(m_used_views[i]).signalUpdate();
+        if (running) {
+          // //System.out.println("m_timer_coordinator run()");
+          if (m_is_coordinator) {
+            // //System.out.println("m_timer_coordinator m_is_coordinator");
+            boolean refresh_data = false;
+            for (int i = 0; i < m_used_views.length; ++i) {
+              try {
+                if (m_used_views[i] != null) {
+                  resolve_sensor(m_used_views[i]).signalUpdate();
+                }
+              } catch (Exception err) {
+                System.out.println(err.getMessage());
+                refresh_data = true;
+                m_used_views[i] = null;
               }
-            } catch (Exception err) {
-              // System.out.println(err.getMessage());
-              refresh_data = true;
-              m_used_views[i] = null;
             }
-          }
-          if (refresh_data) {
-            doSendDataUpdate();
+            if (refresh_data) {
+              doSendDataUpdate();
+            }
           }
         }
       }
@@ -128,7 +133,7 @@ public class sensor {
     m_currentValue = 0;
     m_factory = new ObjectFactory();
     // Publish web service
-    // System.out.println(m_url);
+    // //System.out.println(m_url);
     Endpoint.publish(m_url.toString(), this);
   }
 
@@ -197,10 +202,10 @@ public class sensor {
    */
   @WebMethod
   public void signalUpdate() {
-    // System.out.println("signalUpdate()");
-    // System.out.println(m_url);
+    // //System.out.println("signalUpdate()");
+    // //System.out.println(m_url);
     if (m_is_coordinator) {
-      System.out.println("signal");
+     // //System.out.println("signal");
     }
     m_got_tick = true;
     for (int i = 0; i < m_views.length; ++i) {
@@ -212,21 +217,23 @@ public class sensor {
 
   private void doSendDataUpdate() {
     // Send updates to all other views
-    System.out.println("dataupdate");
-    AnyURIArray other_urls = m_factory.createAnyURIArray();
-    for (URL url : m_used_views) {
-      if (url == null) {
-        continue;
+    //System.out.println("dataupdate");
+    
+    String[] to_send = new String[4];
+    for(int i = 0;i<to_send.length;i++){
+      if(m_used_views[i]==null){
+        to_send[i]="";
+      }else{
+        to_send[i]=m_used_views[i].toString();
       }
-      other_urls.getItem().add(url.toString());
     }
     // Send update to us first
-    sendDataUpdate(m_used_views, m_coordinator);
+    sendDataUpdate(to_send[0],to_send[1],to_send[2],to_send[3], m_coordinator);
     for (URL url : m_others) {
       if (url == null || url == m_url) {
         continue;
       }
-      resolve_sensor(url).sendDataUpdate(other_urls, m_coordinator.toString());
+      resolve_sensor(url).sendDataUpdate(to_send[0],to_send[1],to_send[2],to_send[3], m_coordinator.toString());
     }
   }
 
@@ -244,32 +251,46 @@ public class sensor {
    */
   @WebMethod
   public void sendDataUpdate(
-
-  @WebParam(name = "known_sensors") URL[] known_sensors,
-      @WebParam(name = "coordinator_url") URL coordinator) {
+      @WebParam(name = "north") String north,
+      @WebParam(name = "east")String east,
+      @WebParam(name = "south") String south,
+      @WebParam(name = "west") String west,
+    @WebParam(name = "coordinator_url") URL coordinator) {
+    
     m_coordinator = coordinator;
     int others = 0;
-    for (int i = 0; i < known_sensors.length; i++) {
-      m_used_views[i] = known_sensors[i];
+    
+    try {
+      
+      if(!north.equals(""))m_used_views[0]=new URL(north);
+      if(!east.equals(""))m_used_views[1]=new URL(east);
+      if(!south.equals(""))m_used_views[2]=new URL(south);
+      if(!west.equals(""))m_used_views[3]=new URL(west);
+    } catch (MalformedURLException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
     }
+   
     m_is_coordinator = m_coordinator.equals(m_url);
     for (int k = 0; k < m_others.length; k++) {
       m_others[k] = null;
     }
-    for (int j = 0; j < known_sensors.length; j++) {
+    for (int j = 0; j < m_used_views.length; j++) {
       boolean contains = false;
       for (int z = 0; z < m_others.length; z++) {
         if (m_others[z] != null) {
-          if (m_others[z].equals(known_sensors[j])) {
+          if (m_others[z].equals(m_used_views[j])) {
             contains = true;
           }
         }
       }
       if (!contains) {
-        m_others[others] = known_sensors[j];
+        m_others[others] = m_used_views[j];
         others++;
       }
     }
+
+    
     m_got_tick = true;
     m_vote_running = false;
   }
@@ -306,11 +327,11 @@ public class sensor {
         break;
       }
     }
-    // System.out.println("register 0");
+    // //System.out.println("register 0");
     if (free_idx == -1) {
       return false;
     }
-    // System.out.println("register1");
+    // //System.out.println("register1");
     // Check if requested displays are free
     for (int i = 0; i < m_used_views.length; ++i) {
       if (m_used_views[i] != null && displays[i] == true) {
@@ -318,7 +339,7 @@ public class sensor {
       }
     }
     // set real values
-    // System.out.println("register 2");
+    // //System.out.println("register 2");
     for (int i = 0; i < m_used_views.length; ++i) {
       if (m_used_views[i] == null && displays[i] == true) {
         // view is free and requested
@@ -326,7 +347,7 @@ public class sensor {
       }
     }
     // Send updates to all other views
-    // System.out.println("register complete");
+    // //System.out.println("register complete");
     doSendDataUpdate();
     return true;
   }
@@ -341,58 +362,61 @@ public class sensor {
    */
   @WebMethod
   public boolean vote(@WebParam(name = "value") URL value) {
+
     if (this.m_is_coordinator) {// we are coordinator dont vote
+      //System.out.println("coordinator pinged for vote");
       return false;
     }
-    m_got_tick = true;
-    System.out.println("vote start");
-    boolean winner = true;
-    if (m_url.toString().compareTo(value.toString()) >= 0) {// our URL is more
-                                                            // Powerful --> we
-      System.out.println("vote won"); // win
 
-      // we won --> we have to start an election with everybody else to see
-      // whether we are the strongest
-      for (int i = 0; i < m_used_views.length; i++) {
-        try {
-          if (!m_used_views[i].equals(m_url)) {
-            if (m_url.toString().compareTo(m_others[i].toString()) < 0) {
-              if (resolve_sensor(m_others[i]).vote(m_url.toString())) {
-                winner = false;
-                System.out.println("vote");
-              }
+    if (m_url.toString().compareTo(value.toString()) >= 0) {// incoming URL is
+                                                            // weaker
+      //System.out.println("vote initialized at: " + m_url);
+      //System.out.println("vote requested by: " + value);
+      boolean winner = true;
+
+      for (int i = 0; i < m_others.length; i++) {
+        if (m_others[i] != null) {
+          if (m_url.toString().compareTo(m_others[i].toString()) < 0) {
+            try {
+              //System.out.println("vote requested at:" + m_others[i]);
+              resolve_sensor(m_others[i]).vote(m_url.toString());
+              winner = false;
+            } catch (Exception e) {
+              //System.out.println("sensor at:" + m_others[i] + "is unreachable");
             }
           }
-        } catch (Exception e) {
-          System.out.println("unreachable");
-          continue;
         }
       }
-      if (winner) {// we are new coordinator --> update all data
-        System.out.println("i win");
+      if (winner) {
+        //System.out.println("vote won by: " + m_url);
         this.m_coordinator = m_url;
 
         // reach all other sensors and refresh the list
         for (int i = 0; i < m_others.length; i++) {
           try {
-            resolve_sensor(m_others[i]).getCoordinator(); // ping others to see
-            System.out.println("ping"); // if they're still
+            resolve_sensor(m_used_views[i]).getCoordinator(); // ping others to
+                                                              // see
+            //System.out.println("pinged " + m_others[i]); // if they're still
             // available
           } catch (Exception e3) {// other member is not reachable --> is dead
+            //System.out.println("tried to reach :" + m_used_views[i]
+            //    + "without success");
             m_used_views[i] = null;
             continue;
           }
         }
         doSendDataUpdate();
         m_is_coordinator = true;
-        System.out.println("sent update");
+        //System.out.println("sent update");
       } else {
-        System.out.println("winner went false");
+        //System.out.println("vote lost by: " + m_url);
       }
       return true;
-    } else {// our URL is less Powerful --> we lose
-      System.out.println("vote lost");
+    } else {// incoming url is stronger
+      // should not happen
+      //System.out.println("stronger sensor requested vote at me");
       return false;
     }
+
   }
 }
